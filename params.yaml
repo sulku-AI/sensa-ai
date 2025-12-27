@@ -1,0 +1,13 @@
+# Sensa AI Training Parameters
+epochs: 50
+batch_size: 8
+learning_rate: 0.005
+num_classes: 3
+train_data_dir: data/raw/train
+val_data_dir: data/raw/val
+checkpoint_dir: models
+model_name: sensa_ai_model.pth
+device: auto
+num_workers: 4
+pin_memory: true
+save_frequency: 10
