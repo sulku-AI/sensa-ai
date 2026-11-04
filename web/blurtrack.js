@@ -31,6 +31,16 @@ export function boxAt(tr, t) {
   return kf[kf.length - 1].box;
 }
 
+// iki anahtar kare arası kaymanın yarısı (normalize): sızmayı önleyen ek genişletme (blurtrack.py motion_pad)
+export function motionPad(tr, t) {
+  const kf = tr.keyframes;
+  for (let i = 0; i + 1 < kf.length; i++) {
+    const a = kf[i], b = kf[i + 1];
+    if (a.t <= t && t <= b.t) return 0.5 * Math.max(...a.box.map((pa, j) => Math.abs(b.box[j] - pa)));
+  }
+  return 0;
+}
+
 export function polyAt(tr, t, box) {
   let kf = tr.keyframes[0];
   for (const k of tr.keyframes) if (Math.abs(k.t - t) < Math.abs(kf.t - t)) kf = k;
@@ -51,7 +61,7 @@ export function activeRegions(bt, t, timing = {}) {
     const start = first.t, end = last.t;
     const a = start - hi, b = end + ho;
     const box = boxAt(tr, t);
-    if (box !== null) out.push({ box, strength: 1, poly: polyAt(tr, t, box) });
+    if (box !== null) out.push({ box, strength: 1, poly: polyAt(tr, t, box), pad: motionPad(tr, t) });
     else if (a <= t && t < start) out.push({ box: first.box, strength: 1, poly: first.poly });
     else if (end < t && t <= b) out.push({ box: last.box, strength: 1, poly: last.poly });
     else if (ri > 0 && a - ri <= t && t < a) out.push({ box: first.box, strength: 1 - (a - t) / ri, poly: first.poly });

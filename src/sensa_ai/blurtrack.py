@@ -31,6 +31,7 @@ class Region:
     box: Box
     strength: float
     poly: list[Poly] | None = None
+    pad: float = 0.0  # ek genişletme (normalize): iki anahtar kare arası hareket belirsizliği
 
 
 @dataclass
@@ -53,6 +54,18 @@ class Track:
             return None
         dx, dy = box[0] - kf.box[0], box[1] - kf.box[1]
         return [[v + (dx if i % 2 == 0 else dy) for i, v in enumerate(p)] for p in kf.poly]
+
+    def motion_pad(self, t: float) -> float:
+        """t'yi saran iki anahtar kare arasındaki kaymanın yarısı (normalize).
+
+        Bölge iki örnek arasında doğrusal gitmeyebilir (eğri yol, hızlanma); ara değer bu kadar
+        yanılabilir. Sızmayı (H-06) önlemek için bölge bu kadar ek genişletilir.
+        """
+        kf = self.keyframes
+        for a, b in zip(kf, kf[1:], strict=False):
+            if a.t <= t <= b.t:
+                return 0.5 * max(abs(pb - pa) for pa, pb in zip(a.box, b.box, strict=True))
+        return 0.0
 
     def box_at(self, t: float) -> Box | None:
         """İki anahtar kare arasında doğrusal ara değer; iz dışında None."""
@@ -97,7 +110,7 @@ class BlurTrack:
             first, last = tr.keyframes[0], tr.keyframes[-1]
             a, b = tr.start - hold_in_s, tr.end + hold_out_s
             if box is not None:
-                out.append(Region(box, 1.0, tr.poly_at(t, box)))
+                out.append(Region(box, 1.0, tr.poly_at(t, box), tr.motion_pad(t)))
             elif a <= t < tr.start:
                 out.append(Region(first.box, 1.0, first.poly))
             elif tr.end < t <= b:
