@@ -36,4 +36,4 @@ def test_event_scores() -> None:
     assert s["gec_baslama_ort_s"] == pytest.approx((0.5 + 2.0) / 2, abs=0.11)
     assert s["olay_disi_bulanik_s"] == pytest.approx(1.1, abs=0.15)
     # rampa geç başlamayı kapatır
-    assert metrics.event_scores(bt, ev[:1], ramp_in_s=0.6)["gec_baslama_ort_s"] <= 0.01
+    assert metrics.event_scores(bt, ev[:1], hold_in_s=0.5)["gec_baslama_ort_s"] <= 0.01

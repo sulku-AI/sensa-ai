@@ -32,6 +32,7 @@ blur:
   dilate_px:           {value: 16,   status: estimate, source: "Maskeyi biraz büyüt, kenardan sızmasın"}
   ramp_in_s:           {value: 0.30, status: estimate, source: "Bulanıklık bölge görünmeden önce başlar"}
   ramp_out_s:          {value: 0.50, status: estimate, source: "Bölge kaybolduktan sonra yavaşça kalkar"}
+  hold_factor:         {value: 1.0,  status: estimate, source: "İlk tespitten önce / son tespitten sonra tam güç tutma = hold_factor / sample_fps sn (örnekleme aralığını kapatır)"}
   failsafe_sigma_px:   {value: 10.0, status: estimate, source: "Güvenli modda tam kare hafif bulanıklık (D-007)"}
 
 safe_preview:          # İnsan gözü için diske yazılan HER görüntü bu ayarlardan geçer (D-004)

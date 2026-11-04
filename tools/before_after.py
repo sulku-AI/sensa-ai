@@ -46,7 +46,7 @@ def make(video: Path, out: Path, bt: BlurTrack, vertical: bool = False) -> Path:
         ok, frame = cap.read()
         if not ok:
             break
-        regions = bt.active_regions(i / fps, b["ramp_in_s"], b["ramp_out_s"])
+        regions = bt.active_regions(i / fps, **blur.timing(b))
         after = blur.apply(
             frame, blur.region_mask((h, w), regions, int(b["dilate_px"]), int(b["feather_px"])), b["sigma_px"]
         )

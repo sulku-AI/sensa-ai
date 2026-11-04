@@ -8,6 +8,15 @@ import numpy as np
 from .blurtrack import Box, Region
 
 
+def timing(b: dict, sample_fps: float | None = None) -> dict[str, float]:
+    """params.yaml blur bölümünden active_regions zamanlaması. hold = bir örnekleme aralığı."""
+    from . import config
+
+    sfps = sample_fps or float(config.load()["lookahead"]["sample_fps"])
+    hold = float(b.get("hold_factor", 1.0)) / sfps
+    return {"ramp_in_s": b["ramp_in_s"], "ramp_out_s": b["ramp_out_s"], "hold_in_s": hold, "hold_out_s": hold}
+
+
 def box_mask(shape: tuple[int, int], boxes: list[tuple[Box, float]], dilate_px: int, feather_px: int) -> np.ndarray:
     """Normalize kutulardan 0..1 float maske (güç ile ölçekli, kenarı yumuşak)."""
     h, w = shape

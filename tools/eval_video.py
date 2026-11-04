@@ -15,7 +15,7 @@ import datetime as dt
 import json
 from pathlib import Path
 
-from sensa_ai import config, metrics, pipeline
+from sensa_ai import blur, config, metrics, pipeline
 from sensa_ai.blurtrack import BlurTrack
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -62,7 +62,7 @@ def main() -> None:
             prompts = config.load_prompts()["proxy" if args.proxy else "positive"]
             bt = pipeline.analyze(v, detector, prompts, tracker)
             bt.save(v.with_suffix(".blurtrack.json"))
-        s = metrics.event_scores(bt, load_events(lab), ramp_in_s=b["ramp_in_s"], ramp_out_s=b["ramp_out_s"])
+        s = metrics.event_scores(bt, load_events(lab), **blur.timing(b))
         rows.append({"video": v.name, **s})
         print(v.name, s)
 

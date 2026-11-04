@@ -40,3 +40,22 @@ def test_poly_moves_with_box_and_roundtrips(tmp_path: Path) -> None:
     p = tmp_path / "a.blurtrack.json"
     bt.save(p)
     assert BlurTrack.load(p) == bt
+
+
+def test_hold_covers_sampling_gap_then_ramps() -> None:
+    bt = make()  # iz 1.0 - 2.0
+    kw = {"ramp_in_s": 0.3, "ramp_out_s": 0.5, "hold_in_s": 0.5, "hold_out_s": 0.5}
+    assert bt.active(0.6, **kw)[0][1] == 1.0  # tutma: tam güç
+    ((_, s),) = bt.active(0.35, **kw)  # tutmadan önce rampa
+    assert 0 < s < 1
+    assert bt.active(0.1, **kw) == []
+    assert bt.active(2.4, **kw)[0][1] == 1.0
+    ((_, s),) = bt.active(2.75, **kw)
+    assert s == pytest.approx(0.5)
+
+
+def test_timing_from_params() -> None:
+    from sensa_ai import blur, config
+
+    t = blur.timing(config.load()["blur"])
+    assert t["hold_in_s"] == pytest.approx(1 / config.load()["lookahead"]["sample_fps"])

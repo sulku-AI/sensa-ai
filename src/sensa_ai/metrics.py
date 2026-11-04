@@ -84,9 +84,7 @@ def _overlaps(a: Box, b: Box) -> bool:
     return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
 
 
-def event_scores(
-    track: BlurTrack, events: list[Event], step_s: float = 0.1, ramp_in_s: float = 0.0, ramp_out_s: float = 0.0
-) -> dict[str, float]:
+def event_scores(track: BlurTrack, events: list[Event], step_s: float = 0.1, **timing: float) -> dict[str, float]:
     """H-01 video düzeyi: olay yakalama, kare kapsama, geç başlama, olay dışı bulanıklık (H-02).
 
     Bir an "kapsanmış" sayılır: o anda en az bir bulanık bölge var ve (etiket kutusu varsa) onunla örtüşüyor.
@@ -98,14 +96,14 @@ def event_scores(
     blurred_outside = 0
     for i in range(n_steps):
         t = i * step_s
-        regions = track.active(t, ramp_in_s, ramp_out_s)
+        regions = track.active(t, **timing)
         if regions and not any(e.start <= t < e.end for e in events):
             blurred_outside += 1
     for e in events:
         ts = np.arange(e.start, e.end, step_s)
         hits = []
         for t in ts:
-            regions = track.active(float(t), ramp_in_s, ramp_out_s)
+            regions = track.active(float(t), **timing)
             hits.append(any(e.box is None or _overlaps(b, e.box) for b, _ in regions))
         covered_per_event.append(float(np.mean(hits)) if len(hits) else 1.0)
         first = next((float(t) for t, h in zip(ts, hits, strict=True) if h), None)

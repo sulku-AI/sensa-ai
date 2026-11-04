@@ -37,7 +37,7 @@ Videodan ayrı, altyazı gibi bir **bulanıklaştırma izi** (D-003). Kendi oyna
 ## Oynatıcı kuralları
 
 1. İki anahtar kare arasında kutu doğrusal ara değerle; poligon en yakın anahtar karenin şekli, kutunun kaymasıyla ötelenir.
-2. Bulanıklık izin başlangıcından `blur.ramp_in_s` **önce** başlar, bitişinden `blur.ramp_out_s` sonra söner (güç 0→1→0). İleri bakma (30 sn) bunu mümkün kılar.
+2. Bulanıklık izin başlangıcından önce tam güçte tutulur (`hold = blur.hold_factor / lookahead.sample_fps` sn, örnekleme aralığında görünüp henüz tespit edilmemiş bölgeyi kapatır; kutu ilk anahtar kareninki), ondan da `blur.ramp_in_s` önce yükselmeye başlar. Bitişte aynı sıra tersine: tutma, sonra `blur.ramp_out_s` sönme (güç 0→1→1→1→0). İleri bakma (30 sn) bunu mümkün kılar. Hesap `blur.timing()`.
 3. Bölge `blur.dilate_px` kadar genişletilir ve `blur.feather_px` ile kenarı yumuşatılır; güç `blur.sigma_px` Gauss bulanıklığıdır. Değerler `config/params.yaml`, profil ile değişebilir.
 4. `analyzed_until_s - t < lookahead.safe_margin_s` ise (ve video sonu analiz edilmediyse) tam kare hafif bulanıklık.
 

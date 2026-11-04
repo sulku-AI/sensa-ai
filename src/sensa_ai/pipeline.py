@@ -121,7 +121,7 @@ def render(video: Path, bt: BlurTrack, out: Path, audio: bool = True) -> None:
         ok, frame = cap.read()
         if not ok:
             break
-        regions = bt.active_regions(i / fps, cfg["ramp_in_s"], cfg["ramp_out_s"])
+        regions = bt.active_regions(i / fps, **blur.timing(cfg))
         mask = blur.region_mask((h, w), regions, int(cfg["dilate_px"]), int(cfg["feather_px"]))
         writer.write(blur.apply(frame, mask, cfg["sigma_px"]))
         i += 1

@@ -73,30 +73,46 @@ class BlurTrack:
     analyzed_until_s: float = 0.0
     tracks: list[Track] = field(default_factory=list)
 
-    def active_regions(self, t: float, ramp_in_s: float = 0.0, ramp_out_s: float = 0.0) -> list[Region]:
+    def active_regions(
+        self,
+        t: float,
+        ramp_in_s: float = 0.0,
+        ramp_out_s: float = 0.0,
+        hold_in_s: float = 0.0,
+        hold_out_s: float = 0.0,
+    ) -> list[Region]:
         """t anında bulanıklaştırılacak bölgeler (kutu, güç 0..1, varsa poligon).
 
-        Rampa sayesinde bulanıklık bölge görünmeden ramp_in_s önce başlar ve
-        kaybolduktan ramp_out_s sonra biter. İleri bakma bunu mümkün kılar.
+        Zaman çizgisi (bir iz için):
+            [start - hold_in - ramp_in] 0→1 rampa [start - hold_in] tam güç [start] ... [end] tam güç
+            [end + hold_out] 1→0 rampa [end + hold_out + ramp_out]
+        hold_in / hold_out örnekleme aralığını kapatır: bölge ilk tespitten en çok bir örnek
+        aralığı önce belirmiş, son tespitten bir aralık sonra kaybolmuş olabilir. İleri bakma bunu mümkün kılar.
         """
         out: list[Region] = []
         for tr in self.tracks:
             if not tr.keyframes:
                 continue
             box = tr.box_at(t)
+            first, last = tr.keyframes[0], tr.keyframes[-1]
+            a, b = tr.start - hold_in_s, tr.end + hold_out_s
             if box is not None:
                 out.append(Region(box, 1.0, tr.poly_at(t, box)))
-            elif tr.start - ramp_in_s <= t < tr.start and ramp_in_s > 0:
-                k = tr.keyframes[0]
-                out.append(Region(k.box, 1.0 - (tr.start - t) / ramp_in_s, k.poly))
-            elif tr.end < t <= tr.end + ramp_out_s and ramp_out_s > 0:
-                k = tr.keyframes[-1]
-                out.append(Region(k.box, 1.0 - (t - tr.end) / ramp_out_s, k.poly))
+            elif a <= t < tr.start:
+                out.append(Region(first.box, 1.0, first.poly))
+            elif tr.end < t <= b:
+                out.append(Region(last.box, 1.0, last.poly))
+            elif a - ramp_in_s <= t < a and ramp_in_s > 0:
+                out.append(Region(first.box, 1.0 - (a - t) / ramp_in_s, first.poly))
+            elif b < t <= b + ramp_out_s and ramp_out_s > 0:
+                out.append(Region(last.box, 1.0 - (t - b) / ramp_out_s, last.poly))
         return out
 
-    def active(self, t: float, ramp_in_s: float = 0.0, ramp_out_s: float = 0.0) -> list[tuple[Box, float]]:
+    def active(
+        self, t: float, ramp_in_s: float = 0.0, ramp_out_s: float = 0.0, **hold: float
+    ) -> list[tuple[Box, float]]:
         """Geriye uyumluluk: yalnız (kutu, güç)."""
-        return [(r.box, r.strength) for r in self.active_regions(t, ramp_in_s, ramp_out_s)]
+        return [(r.box, r.strength) for r in self.active_regions(t, ramp_in_s, ramp_out_s, **hold)]
 
     def to_dict(self) -> dict[str, object]:
         return {"format": "sensa-blurtrack", "version": FORMAT_VERSION, **asdict(self)}
