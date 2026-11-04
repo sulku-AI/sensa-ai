@@ -33,3 +33,14 @@ def test_only_safety_module_writes_images() -> None:
         for fn in ("imwrite", "VideoWriter"):
             if fn in names:
                 assert fn in allowed.get(f.name, set()), f"{f.name} {fn} kullanıyor"
+
+
+def test_dataset_frames_only_under_pozitif(tmp_path: Path) -> None:
+    import pytest
+
+    frame = red_square_frame()
+    ok = safety.write_dataset_frame(tmp_path / "pozitif" / "a" / "1.jpg", frame, data_root=tmp_path)
+    assert ok.exists()
+    assert (tmp_path / "pozitif" / ".metadata_never_index").exists()
+    with pytest.raises(PermissionError):
+        safety.write_dataset_frame(tmp_path / "previews" / "1.jpg", frame, data_root=tmp_path)

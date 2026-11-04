@@ -1,0 +1,21 @@
+# Hugging Face model kimlikleri (sayı değil; params.yaml dışında). Seçim: docs/MODEL_ARASTIRMA.md, D-011.
+# Hepsi Apache 2.0. İndirme kullanıcının makinesinde olur (bulut oturumunda HF kapalı).
+
+gate:
+  siglip: google/siglip-base-patch16-224
+
+detect:
+  llmdet_tiny: iSEE-Laboratory/llmdet_tiny          # 1. tercih
+  llmdet_base: iSEE-Laboratory/llmdet_base
+  grounding_dino_tiny: IDEA-Research/grounding-dino-tiny
+  owlv2_base: google/owlv2-base-patch16-ensemble
+
+track:
+  sam2_tiny: facebook/sam2.1-hiera-tiny             # 1. tercih (2060)
+  sam2_small: facebook/sam2.1-hiera-small
+  edgetam: yonigozlan/EdgeTAM-hf                    # M5 adayı; kimlik doğrulanmadı, ilk çalıştırmada kontrol
+
+default:
+  gate: siglip
+  detect: llmdet_tiny
+  track: edgetam                  # M5 ana hedef (D-012); 2060 için sam2_tiny

@@ -45,3 +45,29 @@ def write_preview(path: str | Path, frame: np.ndarray) -> Path:
     if not cv2.imwrite(str(out), safe_preview(frame)):
         raise OSError(f"yazılamadı: {out}")
     return out
+
+
+DATA_ROOT = config.ROOT / "data"
+
+
+def lock_folder(folder: Path) -> None:
+    """Klasörü yalnız sahibine aç ve Spotlight dizinlemesini kapat (macOS küçük resim üretmesin)."""
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / ".metadata_never_index").touch()
+    folder.chmod(0o700)
+
+
+def write_dataset_frame(path: str | Path, frame: np.ndarray, data_root: Path = DATA_ROOT) -> Path:
+    """Eğitim/etiket için ham kare yazar; yalnız data/pozitif/ altına izin verir.
+
+    Bu kareler insan için değildir. Klasör kilitlenir; açmak D-001'e aykırıdır.
+    """
+    out = Path(path).resolve()
+    pos = (data_root / "pozitif").resolve()
+    if pos not in out.parents:
+        raise PermissionError(f"ham kare yalnız {pos} altına yazılır: {out}")
+    lock_folder(pos)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    if not cv2.imwrite(str(out), frame):
+        raise OSError(f"yazılamadı: {out}")
+    return out
