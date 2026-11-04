@@ -140,7 +140,7 @@ def train(args: argparse.Namespace) -> None:
     model = RFDETRSegNano()
     model.train(
         dataset_dir=str(OUT),
-        output_dir=str(ROOT / "models" / "rfdetr_seg_nano"),
+        output_dir=str(args.out),
         epochs=args.epochs,
         batch_size=args.batch,
         grad_accum_steps=args.accum,
@@ -150,6 +150,7 @@ def train(args: argparse.Namespace) -> None:
         num_workers=2,
         early_stopping=True,
         notes={"proje": "sensa-ai", "veri": "docs/MODEL_ARASTIRMA.md §5"},
+        **({"resume": str(args.resume)} if args.resume else {}),
     )
 
 
@@ -166,6 +167,8 @@ def main() -> None:
     t.add_argument("--accum", type=int, default=8)
     t.add_argument("--lr", type=float, default=1e-4)
     t.add_argument("--device", default=None)
+    t.add_argument("--out", type=Path, default=ROOT / "models" / "rfdetr_seg_nano", help="Colab: Drive klasörü")
+    t.add_argument("--resume", type=Path, default=None, help="yarım kalan eğitim: <out>/checkpoint.pth")
     args = ap.parse_args()
     prepare(args) if args.cmd == "prepare" else train(args)
 
