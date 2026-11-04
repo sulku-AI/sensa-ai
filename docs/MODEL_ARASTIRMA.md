@@ -81,8 +81,8 @@ Negatif set (Emirhan izleyebilir) Open Images / COCO'dan sınıf adına göre se
 7. "Malicious Image Analysis via Vision-Language Segmentation Fusion" (2025): https://arxiv.org/html/2512.04599v1
 8. ScanCode LicenseDB, SAM License 2025-11-19: https://scancode-licensedb.aboutcode.org/sam-2025-11-19.html
 9. "Segmentation-Based Blood Blurring: Examining Eye-Response Differences in Gory Video Viewing", Sensors 2025: https://www.mdpi.com/1424-8220/25/7/2093
-10. https://universe.roboflow.com/joost-bos-rfw3p/blood-segmentation-y0ygo (sayfayı Emirhan açmasın)
-11. https://universe.roboflow.com/backupgeneral/blood_segmentation_2 (aynı uyarı)
-12. https://universe.roboflow.com/angel-macwan-6m3sx/blood-segmentation (aynı uyarı)
-13. https://huggingface.co/datasets/NeuralShell/Gore-Blood-Dataset-v1.0 (aynı uyarı)
+10. Roboflow projesi `joost-bos-rfw3p/blood-segmentation-y0ygo` (bağlantı bilerek yok: sayfa örnek görüntü gösterir, D-001)
+11. Roboflow projesi `backupgeneral/blood_segmentation_2` (bağlantı yok, D-001)
+12. Roboflow projesi `angel-macwan-6m3sx/blood-segmentation` (bağlantı yok, D-001)
+13. Hugging Face veri seti `NeuralShell/Gore-Blood-Dataset-v1.0` (bağlantı yok, D-001)
 14. transformers EdgeTAM Video belgesi: https://huggingface.co/docs/transformers/model_doc/edgetam_video
