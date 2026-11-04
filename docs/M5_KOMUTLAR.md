@@ -38,7 +38,7 @@ python -m tools.bench --detector owlv2_base
 python -m tools.bench --no-track --res 480
 ```
 
-- `python -m tools.bench`: LLMDet tiny + SigLIP + EdgeTAM, MPS
+- `python -m tools.bench`: SigLIP + OWLv2 + EdgeTAM, MPS (D-014)
 - `python -m tools.bench --detector owlv2_base`: karşılaştırma
 - `python -m tools.bench --no-track --res 480`: daha hafif ayar
 
