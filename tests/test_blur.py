@@ -1,8 +1,6 @@
 import numpy as np
-import pytest
 
 from sensa_ai import blur
-from sensa_ai.blurtrack import Region
 
 from .conftest import red_square_frame
 
@@ -40,22 +38,3 @@ def test_region_without_poly_uses_box() -> None:
 
     m = blur.region_mask((100, 100), [Region((0.2, 0.2, 0.4, 0.4), 0.5)], dilate_px=0, feather_px=0)
     assert np.isclose(m[30, 30], 0.5) and m[80, 80] == 0
-
-
-def test_feather_only_outward_keeps_region_full() -> None:
-    """Yumuşak kenar bölgenin içini zayıflatmaz: genişletilmiş kutunun kenarı da tam güç (H-06)."""
-    m = blur.region_mask((100, 100), [Region((0.3, 0.3, 0.7, 0.7), 1.0)], dilate_px=4, feather_px=12)
-    assert m[30:71, 30:71].min() == 1.0  # kutunun kendisi
-    assert m[26, 50] == 1.0  # genişletme payının kenarı
-    assert 0 < m[20, 50] < 1  # dışında yumuşak geçiş
-
-
-def test_motion_pad_grows_region_between_keyframes() -> None:
-    from sensa_ai.blurtrack import BlurTrack, Keyframe, Track
-
-    tr = Track("x", [Keyframe(0.0, (0.1, 0.4, 0.2, 0.5)), Keyframe(0.5, (0.3, 0.4, 0.4, 0.5))])
-    (r,) = BlurTrack("v", 1.0, 1.0, [tr]).active_regions(0.25)
-    assert r.pad == pytest.approx(0.1)  # yarım kayma
-    still = blur.region_mask((100, 100), [Region(r.box, 1.0)], 0, 0).sum()
-    moving = blur.region_mask((100, 100), [r], 0, 0).sum()
-    assert moving > 2 * still

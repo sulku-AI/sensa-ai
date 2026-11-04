@@ -55,7 +55,6 @@ def test_js_matches_python() -> None:
         for r, p in zip(regions, py, strict=True):
             assert r["box"] == pytest.approx(list(p.box), abs=1e-9), t
             assert r["strength"] == pytest.approx(p.strength, abs=1e-9), t
-            assert r.get("pad", 0.0) == pytest.approx(p.pad, abs=1e-9), t
             assert (r["poly"] is None) == (p.poly is None), t
             if p.poly:
                 assert np.allclose(r["poly"], p.poly), t

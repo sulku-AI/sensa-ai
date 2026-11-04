@@ -29,7 +29,7 @@ def box_mask(shape: tuple[int, int], boxes: list[tuple[Box, float]], dilate_px: 
         mask = np.maximum(mask, layer).astype(np.float32)
     if feather_px > 0 and mask.any():
         k = feather_px * 2 + 1
-        mask = np.maximum(mask, cv2.GaussianBlur(mask, (k, k), feather_px / 2))  # yalnız dışa
+        mask = cv2.GaussianBlur(mask, (k, k), feather_px / 2)
     return mask
 
 
@@ -39,27 +39,23 @@ def region_mask(shape: tuple[int, int], regions: list[Region], dilate_px: int, f
     mask: np.ndarray = np.zeros((h, w), np.float32)
     boxes_only: list[tuple[Box, float]] = []
     for r in regions:
-        extra = round(r.pad * max(w, h))
         if not r.poly:
-            x0, y0, x1, y1 = r.box
-            boxes_only.append(((x0 - r.pad, y0 - r.pad, x1 + r.pad, y1 + r.pad), r.strength))
+            boxes_only.append((r.box, r.strength))
             continue
         layer: np.ndarray = np.zeros((h, w), np.uint8)
         pts = [
             (np.asarray(p, np.float32).reshape(-1, 2) * (w, h)).round().astype(np.int32) for p in r.poly if len(p) >= 6
         ]
         cv2.fillPoly(layer, pts, 255)
-        dl = dilate_px + extra
-        if dl > 0:
-            se = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dl * 2 + 1, dl * 2 + 1))
+        if dilate_px > 0:
+            se = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dilate_px * 2 + 1, dilate_px * 2 + 1))
             layer = cv2.dilate(layer, se)
         mask = np.maximum(mask, layer.astype(np.float32) / 255 * float(np.clip(r.strength, 0.0, 1.0)))
     if boxes_only:
         mask = np.maximum(mask, box_mask(shape, boxes_only, dilate_px, 0))
     if feather_px > 0 and mask.any():
-        # yumuşak kenar yalnız DIŞA doğru: genişletilmiş bölgenin içi tam güçte kalır (sızma yok, H-06)
         ks = feather_px * 2 + 1
-        mask = np.maximum(mask, cv2.GaussianBlur(mask, (ks, ks), feather_px / 2))
+        mask = cv2.GaussianBlur(mask, (ks, ks), feather_px / 2)
     return mask
 
 

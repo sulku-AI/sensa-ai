@@ -51,7 +51,6 @@ function sizeCanvases() {
 }
 
 function fillRegion(r, w, h, dilate) {
-  dilate += Math.round((r.pad || 0) * Math.max(w, h));
   mctx.globalAlpha = Math.max(0, Math.min(1, r.strength));
   mctx.fillStyle = mctx.strokeStyle = "#fff";
   mctx.lineJoin = "round";
@@ -66,7 +65,7 @@ function fillRegion(r, w, h, dilate) {
       if (dilate > 0) mctx.stroke();
     }
   } else {
-    const p = r.pad || 0, [x0, y0, x1, y1] = [r.box[0] - p, r.box[1] - p, r.box[2] + p, r.box[3] + p];
+    const [x0, y0, x1, y1] = r.box;
     mctx.fillRect(x0 * w - dilate, y0 * h - dilate, (x1 - x0) * w + 2 * dilate, (y1 - y0) * h + 2 * dilate);
   }
 }
@@ -87,13 +86,13 @@ function draw(t) {
     mctx.clearRect(0, 0, w, h);
     mctx.filter = "none";
     for (const r of regions) fillRegion(r, w, h, b.dilate_px);
-    // Yumuşak kenar yalnız dışa (Python: max(maske, GaussianBlur(maske, feather_px / 2)))
+    // Yumuşak kenar: maskeyi bulanıklaştır (Python: GaussianBlur sigma = feather_px / 2)
     bctx.globalCompositeOperation = "copy";
     bctx.filter = `blur(${b.feather_px / 2}px)`;
     bctx.drawImage(mask, 0, 0);
     bctx.filter = "none";
     mctx.globalAlpha = 1;
-    mctx.globalCompositeOperation = "lighten";
+    mctx.globalCompositeOperation = "copy";
     mctx.drawImage(blurred, 0, 0);
     mctx.globalCompositeOperation = "source-over";
     // Bulanık kare, yumuşak maskeyle kırpılır ve üstüne çizilir
