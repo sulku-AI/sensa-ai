@@ -92,8 +92,8 @@ Sonuç: yanlış alarm oranı. `--previews` yanlış alarm veren negatiflerin g�
 ```bash
 export ROBOFLOW_API_KEY=...
 python -m tools.fetch_datasets --list
-python -m tools.fetch_datasets blood_seg_joost blood_seg_backup
-python -m tools.evaluate --pos data/pozitif/blood_seg_joost --pos data/pozitif/blood_seg_backup \
+python -m tools.fetch_datasets blood_seg_joost blood_pure_blur
+python -m tools.evaluate --pos data/pozitif/blood_seg_joost --pos data/pozitif/blood_pure_blur \
     --neg data/negatif/coco --detector llmdet_tiny
 python -m tools.evaluate --pos data/pozitif/blood_seg_joost --neg data/negatif/coco --detector owlv2_base
 ```
@@ -126,7 +126,7 @@ Pozitif klasörden video verilirse araç reddeder.
 ## 6. Damıtma eğitimi (M5, gece prize takılıyken)
 
 ```bash
-python -m tools.train_rfdetr prepare --src data/pozitif/blood_seg_joost data/pozitif/blood_seg_backup --neg data/negatif/coco
+python -m tools.train_rfdetr prepare --src data/pozitif/blood_seg_joost data/pozitif/blood_pure_blur --neg data/negatif/coco
 python -m tools.train_rfdetr train --epochs 30
 ```
 

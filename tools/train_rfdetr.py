@@ -1,7 +1,7 @@
 """Damıtma eğitimi (M5 yol haritası): RF-DETR-Seg Nano (Apache 2.0, D-011), varsayılan cihaz M5 / MPS.
 
     pip install "rfdetr[train]"
-    python -m tools.train_rfdetr prepare --src data/pozitif/blood_seg_joost data/pozitif/blood_seg_backup \
+    python -m tools.train_rfdetr prepare --src data/pozitif/blood_seg_joost data/pozitif/blood_pure_blur \
         data/pozitif/autolabel --neg data/negatif/coco
     python -m tools.train_rfdetr train --epochs 30
 

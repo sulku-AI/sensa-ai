@@ -82,7 +82,7 @@ Negatif set (Emirhan izleyebilir) Open Images / COCO'dan sınıf adına göre se
 8. ScanCode LicenseDB, SAM License 2025-11-19: https://scancode-licensedb.aboutcode.org/sam-2025-11-19.html
 9. "Segmentation-Based Blood Blurring: Examining Eye-Response Differences in Gory Video Viewing", Sensors 2025: https://www.mdpi.com/1424-8220/25/7/2093
 10. Roboflow projesi `joost-bos-rfw3p/blood-segmentation-y0ygo` (bağlantı bilerek yok: sayfa örnek görüntü gösterir, D-001)
-11. Roboflow projesi `backupgeneral/blood_segmentation_2` (bağlantı yok, D-001)
+11. Roboflow projesi `backupgeneral/blood_segmentation_2` (bağlantı yok, D-001). 2026-11-04: API "Unsupported request", artık yok; yerine `pure-blur/blood-hjaja` (3229 görüntü, blood + bloodstain, CC BY 4.0)
 12. Roboflow projesi `angel-macwan-6m3sx/blood-segmentation` (bağlantı yok, D-001)
 13. Hugging Face veri seti `NeuralShell/Gore-Blood-Dataset-v1.0` (bağlantı yok, D-001)
 14. transformers EdgeTAM Video belgesi: https://huggingface.co/docs/transformers/model_doc/edgetam_video

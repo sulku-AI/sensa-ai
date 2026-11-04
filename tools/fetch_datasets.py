@@ -2,7 +2,7 @@
 
     export ROBOFLOW_API_KEY=...        # roboflow.com > Settings > API Keys (o sayfada görüntü yok)
     python -m tools.fetch_datasets --list
-    python -m tools.fetch_datasets blood_seg_joost blood_seg_backup
+    python -m tools.fetch_datasets blood_seg_joost blood_pure_blur
 
 Görüntüler doğrudan data/pozitif/<ad>/ altına COCO segmentasyon biçiminde yazılır. Bu betik
 hiçbir görüntüyü açmaz, göstermez, küçük resim üretmez; yalnız sayıları yazar. Emirhan bu
@@ -25,7 +25,7 @@ POS = ROOT / "data" / "pozitif"
 # ad: (workspace, project, lisans)
 DATASETS = {
     "blood_seg_joost": ("joost-bos-rfw3p", "blood-segmentation-y0ygo", "CC BY 4.0"),
-    "blood_seg_backup": ("backupgeneral", "blood_segmentation_2", "CC BY 4.0"),
+    "blood_pure_blur": ("pure-blur", "blood-hjaja", "CC BY 4.0"),  # 3229 görüntü, blood + bloodstain maskesi
 }
 
 

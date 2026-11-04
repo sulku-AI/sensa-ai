@@ -1,6 +1,6 @@
 # Pozitif set değerlendirmesi 2026-11-04 (M5, mps), H-01 ilk ölçüm
 
-`python -m tools.evaluate --pos data/pozitif/blood_seg_joost --pos data/pozitif/blood_seg_backup` (Emirhan'ın makinesi; yalnız sayı). Kapı SigLIP base (0.30), dedektör OWLv2 base (kutu eşiği 0.25), sıfır atış.
+`python -m tools.evaluate --pos data/pozitif/blood_seg_joost --pos data/pozitif/blood_seg_backup` (Emirhan'ın makinesi; yalnız sayı). **Not:** `blood_seg_backup` indirilemedi (Roboflow: proje yok), 200 görüntünün hepsi `blood_seg_joost`'tan. Kapı SigLIP base (0.30), dedektör OWLv2 base (kutu eşiği 0.25), sıfır atış.
 
 | ölçüt | değer | hedef |
 |---|---|---|
