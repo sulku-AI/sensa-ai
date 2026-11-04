@@ -10,12 +10,23 @@ Bu sayfa sırayla izlenir. Her adımın çıktısı **yalnız sayı ya da kansı
 
 ## 1. Kurulum (bir kez, ~10 dk, internet gerekir)
 
+Komutları tek tek yapıştır. Satır sonuna `#` açıklaması koyma: zsh onu komutun parçası sanar.
+
 ```bash
 brew install python@3.12 ffmpeg
-python3.12 -m venv .venv && source .venv/bin/activate
+cd ~
+git clone https://github.com/sulku-AI/sensa-ai.git
+cd sensa-ai
+git checkout claude/repo-yapisi-ve-plan
+/opt/homebrew/bin/python3.12 -m venv .venv
+source .venv/bin/activate
+python --version
+pip install -U pip
 pip install -e ".[dev,models,player,data,train]"
-pytest                                   # 30+ test, hepsi sentetik
+pytest
 ```
+
+`python --version` **3.12.x** demeli (3.14 değil; torch ve bazı paketler 3.14'te henüz sorunlu). `pytest` 40+ test çalıştırır, hepsi sentetik. Bütün sonraki komutlar `sensa-ai` klasöründe, `.venv` açıkken.
 
 İlk model çalıştırmasında ağırlıklar Hugging Face'ten iner (LLMDet tiny, SigLIP base, EdgeTAM: toplam ~1.5 GB, tahmin).
 
