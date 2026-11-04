@@ -13,7 +13,7 @@ detect:
 track:
   sam2_tiny: facebook/sam2.1-hiera-tiny             # 1. tercih (2060)
   sam2_small: facebook/sam2.1-hiera-small
-  edgetam: facebook/EdgeTAM                        # M5 ana hedef; transformers EdgeTamVideoConfig belgesindeki kimlik
+  edgetam: facebook/EdgeTAM@refs/pr/1              # M5 ana hedef; transformers ağırlıkları yalnız HF PR #1'de (ana dalda yalnız edgetam.pt)
 
 default:
   gate: siglip

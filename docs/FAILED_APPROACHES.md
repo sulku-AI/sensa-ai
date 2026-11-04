@@ -14,5 +14,5 @@ Her kayıt: yaklaşım, neden umut vericiydi, neden bırakıldı, ders.
 
 - **Yaklaşım:** Takip modelini bu Hugging Face kimliğiyle yüklemek. Kimlik bulutta, HF erişimi kapalıyken bellekten yazılmıştı (doğrulanmadı).
 - **Ne oldu:** M5'te `tools.bench` 401 / RepositoryNotFound verdi.
-- **Düzeltme:** `facebook/EdgeTAM` (transformers 5.0 `EdgeTamVideoConfig` belgesindeki kimlik). `Tracker.from_pretrained` varsayılan yüklenemezse SAM 2.1 tiny'ye düşer ve bunu yazar.
+- **Düzeltme:** `facebook/EdgeTAM` ana dalı da olmadı (yalnız orijinal `edgetam.pt`, OSError). transformers ağırlıkları açık HF PR #1'de: `revision="refs/pr/1"` (models.yaml'da `facebook/EdgeTAM@refs/pr/1`). `Tracker.from_pretrained` varsayılan yüklenemezse SAM 2.1 tiny'ye düşer ve bunu yazar.
 - **Ders:** Model kimliklerini kurulu kütüphanenin belgesinden al; ilk gerçek çalıştırma doğrulamadır.

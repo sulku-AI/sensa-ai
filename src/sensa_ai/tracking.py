@@ -106,6 +106,8 @@ def _load(mid: str, d: str) -> tuple[Any, Any]:
     """Video modeli sınıfını açıkça seç: AutoModel EdgeTAM kimliğinde görüntü modelini seçebilir."""
     from transformers import EdgeTamVideoModel, Sam2VideoModel, Sam2VideoProcessor
 
-    klass = EdgeTamVideoModel if "edgetam" in mid.lower() else Sam2VideoModel
-    model = klass.from_pretrained(mid).to(d).eval()
-    return model, Sam2VideoProcessor.from_pretrained(mid)
+    repo, _, rev = mid.partition("@")  # "kimlik@revizyon", ör. facebook/EdgeTAM@refs/pr/1
+    kw = {"revision": rev} if rev else {}
+    klass = EdgeTamVideoModel if "edgetam" in repo.lower() else Sam2VideoModel
+    model = klass.from_pretrained(repo, **kw).to(d).eval()
+    return model, Sam2VideoProcessor.from_pretrained(repo, **kw)
