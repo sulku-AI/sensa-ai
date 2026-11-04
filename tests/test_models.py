@@ -95,6 +95,6 @@ def test_mask_to_box() -> None:
 
 
 def test_resolve_ids() -> None:
-    assert models.resolve("detect") == "iSEE-Laboratory/llmdet_tiny"
+    assert models.resolve("detect") == "google/owlv2-base-patch16-ensemble"  # D-014
     assert models.resolve("detect", "owlv2_base").startswith("google/owlv2")
     assert models.resolve("detect", "x/y") == "x/y"

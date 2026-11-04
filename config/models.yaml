@@ -17,5 +17,5 @@ track:
 
 default:
   gate: siglip
-  detect: llmdet_tiny
+  detect: owlv2_base               # D-014 (kullanıcı): M5'te 490 ms, SA-Co kıyaslamasında LLMDet'ten iyi
   track: edgetam                  # M5 ana hedef (D-012); 2060 için sam2_tiny
