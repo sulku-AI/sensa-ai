@@ -27,3 +27,6 @@ models/*
 
 # Önizlemeler safety.safe_preview ile üretilir ama yine de repoya girmez
 previews/
+
+# Yanlışlıkla eklenen paketler
+*.whl
