@@ -16,6 +16,8 @@ transformers = pytest.importorskip("transformers")
 
 from sensa_ai import models, tracking  # noqa: E402
 
+from . import _tiny  # noqa: E402
+
 FRAME = np.random.default_rng(0).integers(0, 255, (120, 160, 3), dtype=np.uint8)
 PROMPTS = ["red balloon", "blood"]
 
@@ -28,56 +30,15 @@ def _check(dets: list) -> None:
 
 
 def test_grounding_family(tmp_path: Path) -> None:
-    from transformers import (
-        BertTokenizerFast,
-        GroundingDinoConfig,
-        GroundingDinoForObjectDetection,
-        GroundingDinoImageProcessor,
-        GroundingDinoProcessor,
-    )
-
-    words = ["[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]", ".", "red", "balloon", "blood"]
-    (tmp_path / "vocab.txt").write_text("\n".join(words))
-    text = {"model_type": "bert", "hidden_size": 64, "num_hidden_layers": 1, "num_attention_heads": 2}
-    text |= {"intermediate_size": 64, "vocab_size": len(words)}
-    cfg = GroundingDinoConfig(
-        text_config=text,
-        d_model=64,
-        encoder_layers=1,
-        decoder_layers=2,
-        encoder_ffn_dim=64,
-        decoder_ffn_dim=64,
-        num_queries=20,
-        encoder_attention_heads=2,
-        decoder_attention_heads=2,
-    )
-    torch.manual_seed(0)
-    proc = GroundingDinoProcessor(
-        image_processor=GroundingDinoImageProcessor(size={"shortest_edge": 200, "longest_edge": 300}),
-        tokenizer=BertTokenizerFast(str(tmp_path / "vocab.txt")),
-    )
-    det = models.TextDetector(GroundingDinoForObjectDetection(cfg).eval(), proc, "cpu", 0.0, 0.0)
+    model, proc = _tiny.tiny_grounding(tmp_path)
+    det = models.TextDetector(model, proc, "cpu", 0.0, 0.0)
     assert det.family == "grounding"
     _check(det(FRAME, PROMPTS))
 
 
 def test_owlv2_family() -> None:
-    from transformers import CLIPTokenizer, Owlv2Config, Owlv2ForObjectDetection, Owlv2ImageProcessor, Owlv2Processor
-
-    vocab = {"blood</w>": 0, "r": 1, "e": 2, "d</w>": 3, "b": 4, "a": 5, "l": 6, "o": 7, "n</w>": 8}
-    vocab |= {"<|startoftext|>": 9, "<|endoftext|>": 10}  # OWL: başlangıç kimliği > 0, bitiş en büyük
-    layer = {"hidden_size": 32, "intermediate_size": 32, "num_hidden_layers": 1, "num_attention_heads": 2}
-    cfg = Owlv2Config(
-        text_config=layer | {"vocab_size": len(vocab)},
-        vision_config=layer | {"image_size": 96, "patch_size": 16},
-        projection_dim=32,
-    )
-    torch.manual_seed(0)
-    proc = Owlv2Processor(
-        image_processor=Owlv2ImageProcessor(size={"height": 96, "width": 96}),
-        tokenizer=CLIPTokenizer(vocab=vocab, merges=[]),
-    )
-    det = models.TextDetector(Owlv2ForObjectDetection(cfg).eval(), proc, "cpu", 0.0, 0.0)
+    model, proc = _tiny.tiny_owlv2()
+    det = models.TextDetector(model, proc, "cpu", 0.0, 0.0)
     assert det.family == "owlv2"
     _check(det(FRAME, PROMPTS))
 
@@ -118,20 +79,8 @@ def test_gated_detector_skips_when_gate_low() -> None:
 
 @pytest.mark.parametrize("family", ["sam2", "edgetam"])
 def test_tracker_mask_shapes(family: str) -> None:
-    from transformers import (
-        EdgeTamVideoConfig,
-        EdgeTamVideoModel,
-        Sam2ImageProcessor,
-        Sam2VideoConfig,
-        Sam2VideoModel,
-        Sam2VideoProcessor,
-        Sam2VideoVideoProcessor,
-    )
-
-    torch.manual_seed(0)
-    proc = Sam2VideoProcessor(image_processor=Sam2ImageProcessor(), video_processor=Sam2VideoVideoProcessor())
-    model = Sam2VideoModel(Sam2VideoConfig()) if family == "sam2" else EdgeTamVideoModel(EdgeTamVideoConfig())
-    tr = tracking.Tracker(model.eval(), proc, "cpu", family)
+    model, proc = _tiny.tiny_video_tracker(family)
+    tr = tracking.Tracker(model, proc, "cpu", family)
     frames = [np.random.default_rng(i).integers(0, 255, (64, 96, 3), dtype=np.uint8) for i in range(3)]
     masks = tr.track(frames, [(0.2, 0.2, 0.5, 0.5)], start_idx=1)
     assert len(masks) == 3 and all(m.shape == (64, 96) and m.dtype == bool for m in masks)
