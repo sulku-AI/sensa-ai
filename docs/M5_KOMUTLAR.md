@@ -116,4 +116,7 @@ Ağırlıklar `models/rfdetr_seg_nano/` altına (repoya girmez). MPS'te bir hata
 
 ## 7. Bir sorun çıkarsa
 
+- `No module named 'cv2'`: eğitim paketi `opencv-python-headless` da kurmuş olabilir, iki paket aynı `cv2` klasörünü paylaşır. Düzeltme:
+  `pip uninstall -y opencv-python opencv-python-headless opencv-contrib-python` ve ardından `pip install --force-reinstall --no-deps opencv-python`.
+
 Hata metnini (yalnız terminal metni, görüntü değil) thread'e yapıştır. `experiments/results/` dosyaları da olur.
