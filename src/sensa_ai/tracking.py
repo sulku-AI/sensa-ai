@@ -21,24 +21,18 @@ class Tracker:
 
     @classmethod
     def from_pretrained(cls, model_id: str | None = None, device: str | None = None) -> Tracker:
-        from transformers import AutoModel, Sam2VideoProcessor
-
         from .models import resolve
 
         d = dev.pick(device)
         mid = model_id or resolve("track")
         try:
-            model = AutoModel.from_pretrained(mid).to(d).eval()
-            proc = Sam2VideoProcessor.from_pretrained(mid)
+            return cls(*_load(mid, d), d, mid)
         except (OSError, ValueError) as e:
             fallback = resolve("track", "sam2_tiny")
             if model_id is not None or mid == fallback:
                 raise
-            print(f"[tracking] {mid} yüklenemedi ({type(e).__name__}); yedek {fallback} kullanılıyor")
-            mid = fallback
-            model = AutoModel.from_pretrained(mid).to(d).eval()
-            proc = Sam2VideoProcessor.from_pretrained(mid)
-        return cls(model, proc, d, mid)
+            print(f"[tracking] {mid} yüklenemedi ({type(e).__name__}: {str(e)[:300]}); yedek {fallback} kullanılıyor")
+            return cls(*_load(fallback, d), d, fallback)
 
     def track(self, frames_bgr: list[np.ndarray], boxes: list[Box], start_idx: int = 0) -> list[np.ndarray]:
         """`start_idx` karesindeki normalize kutulardan başlayıp ileri yayar.
@@ -106,3 +100,12 @@ def mask_to_box(mask: np.ndarray) -> Box | None:
         return None
     h, w = mask.shape
     return (xs.min() / w, ys.min() / h, (xs.max() + 1) / w, (ys.max() + 1) / h)
+
+
+def _load(mid: str, d: str) -> tuple[Any, Any]:
+    """Video modeli sınıfını açıkça seç: AutoModel EdgeTAM kimliğinde görüntü modelini seçebilir."""
+    from transformers import EdgeTamVideoModel, Sam2VideoModel, Sam2VideoProcessor
+
+    klass = EdgeTamVideoModel if "edgetam" in mid.lower() else Sam2VideoModel
+    model = klass.from_pretrained(mid).to(d).eval()
+    return model, Sam2VideoProcessor.from_pretrained(mid)
