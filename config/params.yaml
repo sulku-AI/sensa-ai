@@ -1,0 +1,46 @@
+# sensa-ai: bütün sayısal parametrelerin TEK kaynağı.
+#
+# status (her değer bir tane taşımalı):
+#   measured   : bizim makinede / videoda ölçtüğümüz değer (dosya ve tarih yazılmalı)
+#   datasheet  : model kartı, lisans ya da standart değeri (kaynak yazılmalı)
+#   literature : yayımlanmış değer, bizim tarafımızdan doğrulanmadı (kaynak yazılmalı)
+#   sim        : bizim deneyimizin sonucu (betik ve tarih yazılmalı)
+#   estimate   : kendi tahminimiz, ölçülmedi
+#   target     : tasarım hedefi, SONUÇ DEĞİL
+#
+# Kod bu değerleri src/sensa_ai/config.py ile okur. Belgeler kopya sayı tutmaz, buraya atıf yapar.
+
+lookahead:
+  window_s:            {value: 30.0, status: target,   source: "D-002 (kullanıcı): oynatma kafasının 30 sn önü taranır"}
+  safe_margin_s:       {value: 5.0,  status: estimate, source: "Tampon bundan kısaysa güvenli mod (D-007)"}
+  sample_fps:          {value: 2.0,  status: estimate, source: "Saniyede 2 kare tespit; aradaki kareler SAM 2 takibiyle dolar"}
+
+gate:                  # Aşama A: kare başına ucuz eleme (SigLIP sıfır atış)
+  threshold:           {value: 0.30, status: estimate, source: "Ayar M2'de negatif setle yapılacak"}
+
+detect:                # Aşama B: metinle bölge bulma (Grounding DINO / OWLv2)
+  box_threshold:       {value: 0.25, status: estimate, source: "Grounding DINO örnek varsayılanına yakın, doğrulanmadı"}
+  text_threshold:      {value: 0.25, status: estimate, source: "aynı"}
+  max_regions:         {value: 8,    status: estimate, source: "Kare başına en fazla bölge"}
+
+track:                 # Aşama C: SAM 2 ile maske takibi
+  max_gap_s:           {value: 1.0,  status: estimate, source: "Bu kadar tespit gelmezse iz kapanır"}
+
+blur:
+  sigma_px:            {value: 18.0, status: estimate, source: "Hafif bulanıklık (1080p); kişiye göre ayarlanacak (M4)"}
+  feather_px:          {value: 24,   status: estimate, source: "Maske kenarı yumuşatma, keskin kutu görünmesin"}
+  dilate_px:           {value: 16,   status: estimate, source: "Maskeyi biraz büyüt, kenardan sızmasın"}
+  ramp_in_s:           {value: 0.30, status: estimate, source: "Bulanıklık bölge görünmeden önce başlar"}
+  ramp_out_s:          {value: 0.50, status: estimate, source: "Bölge kaybolduktan sonra yavaşça kalkar"}
+  failsafe_sigma_px:   {value: 10.0, status: estimate, source: "Güvenli modda tam kare hafif bulanıklık (D-007)"}
+
+safe_preview:          # İnsan gözü için diske yazılan HER görüntü bu ayarlardan geçer (D-004)
+  block_px:            {value: 16,   status: estimate, source: "Pikselleştirme blok boyutu (küçük resim üzerinde)"}
+  max_side_px:         {value: 160,  status: estimate, source: "Küçük resim uzun kenarı"}
+  grayscale:           {value: true, status: estimate, source: "Kırmızıyı göstermemek için gri tonlama"}
+
+requirements:          # Kabul ölçütleri: docs/TEST_PLANI.md
+  event_recall:        {value: 0.95, status: target, source: "H-01: olay bazında yakalama oranı"}
+  frame_coverage:      {value: 0.90, status: target, source: "H-01: olay süresince maskenin bölgeyi örtme oranı"}
+  false_alarm_per_min: {value: 0.5,  status: target, source: "H-02: negatif sette dakikada en fazla yanlış bulanıklık"}
+  realtime_factor:     {value: 1.2,  status: target, source: "H-03: analiz hızı / oynatma hızı (en az)"}

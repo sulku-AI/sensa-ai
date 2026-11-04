@@ -1,9 +1,29 @@
 __pycache__/
 *.py[cod]
+*.egg-info/
+.venv/
 venv/
 .env
-data/raw/*
-data/processed/*
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+
+# D-004: videolar, ham kareler ve model ağırlıkları ASLA repoya girmez.
+# Pozitif (kanlı) içerik yalnız yerelde, data/pozitif/ altında, kilitli tutulur.
+data/*
+!data/README.md
 models/*
-!data/raw/.gitkeep
 !models/.gitkeep
+*.mp4
+*.mkv
+*.mov
+*.avi
+*.webm
+*.pth
+*.pt
+*.safetensors
+
+# Önizlemeler safety.safe_preview ile üretilir ama yine de repoya girmez
+previews/

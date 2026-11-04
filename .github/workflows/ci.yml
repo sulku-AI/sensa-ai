@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: Lint
+        run: ruff check src tests
+      - name: Format
+        run: black --check src tests
+      - name: Types
+        run: mypy src
+      - name: Tests (yalnız sentetik, kansız görüntü)
+        run: pytest --cov=sensa_ai --cov-report=term-missing
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Required docs exist
+        run: |
+          for f in README.md CLAUDE.md docs/DECISIONS.md docs/FAILED_APPROACHES.md docs/MODEL_SECIMI.md \
+                   docs/YOL_HARITASI.md docs/TEST_PLANI.md; do
+            test -f "$f" || { echo "missing $f"; exit 1; }
+          done
+
+  no-media:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Repoda video veya görüntü yok (D-004)
+        run: |
+          found=$(git ls-files | grep -iE '\.(mp4|mkv|mov|avi|webm|jpg|jpeg|png|gif|webp|bmp)$' || true)
+          if [ -n "$found" ]; then echo "Medya dosyası bulundu:"; echo "$found"; exit 1; fi

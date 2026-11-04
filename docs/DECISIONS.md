@@ -1,0 +1,16 @@
+# Karar defteri
+
+Kimin karar verdiği yazılır: **(kullanıcı)** veya **(asistan, kullanıcı değiştirebilir)**. Bir karar değişirse eski satır silinmez, yeni satır eskisinin yerini aldığını söyler.
+
+| ID | Tarih | Karar | Durum |
+|---|---|---|---|
+| D-001 | 2026-11-03 | **Kesin kural:** Emirhan'a hiçbir zaman kanlı/vahşet içeren görüntü gösterilmez ve izlemesi istenmez (ayna dokunuşu sinestezisi: görüntü fiziksel acı veriyor). Etiketleme ve test modellerle, bir ortakla ya da yalnız güvenli önizlemelerle ve nötr metin özetleriyle yapılır | KARAR (kullanıcı) |
+| D-002 | 2026-11-03 | İlk sürüm: bilgisayardaki video dosyaları, kendi oynatıcımız, oynatma kafasının **30 sn** önünü tarama ve hafif bölgesel bulanıklaştırma. Tarayıcı eklentisi sonra | KARAR (kullanıcı) |
+| D-003 | 2026-11-03 | Netflix vb. üzerine üçüncü parti katman yok (DRM). Uzun vadede platformlar için videodan ayrı **bulanıklaştırma izi** dosyası (`.blurtrack.json`, altyazı gibi). Kendi oynatıcımız da aynı biçimi kullanır | KARAR (kullanıcı); biçim (asistan) |
+| D-004 | 2026-11-03 | D-001 kodda zorunlu: insan için diske görüntü yazmanın tek yolu `safety.write_preview` (küçültme + gri ton + 16 px pikselleştirme). Videolar, ham kareler ve ağırlıklar repoya girmez (`.gitignore` + CI `no-media` işi). Test görüntüleri yalnız sentetik renkli şekiller | KARAR (asistan, kullanıcı değiştirebilir) |
+| D-005 | 2026-11-03 | Boru hattı önce **vekil hedefle** (kırmızı balon, `config/prompts.yaml` → `proxy`) uçtan uca sınanır. Metinle çalışan modeller hedefi istemden aldığı için aynı kod kana geçince değişmez; Emirhan vekil sonuçlarını rahatça izleyip bulanıklığın doğallığını değerlendirebilir | KARAR (asistan, kullanıcı değiştirebilir) |
+| D-006 | 2026-11-03 | Model yaklaşımı: elle etiketli veriyle eğitim yerine **metinle bölge bulan açık modeller + SAM 2 takip** (SigLIP kapı → Grounding DINO / OWLv2 bölge → SAM 2.1 maske). Hepsi Apache 2.0. AGPL lisanslı Ultralytics/YOLO-World kullanılmaz. Gerekçe: `docs/MODEL_SECIMI.md`. Eski Faster R-CNN eğitimi `archive/`'e taşındı (FA-01) | KARAR (asistan, kullanıcı değiştirebilir) |
+| D-007 | 2026-11-03 | Güvenli mod: analiz tamponu `lookahead.safe_margin_s`'den kısalırsa (yavaş makine, ileri sarma) tam kare hafif bulanıklık. Alternatif: otomatik duraklatma. Kullanıcı seçecek, varsayılan bulanıklık | KARAR (asistan, kullanıcı değiştirebilir) |
+| D-008 | 2026-11-03 | "sensa-ai" adı beğenilmedi; yeni isim seçilene kadar repo ve paket adı geçici olarak `sensa-ai` / `sensa_ai` kalır | AÇIK (kullanıcı) |
+| D-009 | 2026-11-03 | Kâr amacı yok: açık kaynak, **MIT** lisansı (isoshift ile aynı). Bağış: GitHub Sponsors / Open Collective. Kullanılan modeller Apache 2.0, MIT ile uyumlu | KARAR (asistan, kullanıcı değiştirebilir; Apache 2.0 da olabilir) |
+| D-010 | 2026-11-03 | Repo yapısı isoshift / optimiSe-radar ile aynı: `config/params.yaml` tek sayı kaynağı + status etiketleri, karar defteri, olumsuz sonuç kaydı, hipotez + çıkış kapıları, testli modüller, CI'da belge kontrolü | KARAR (asistan, kullanıcı isteği üzerine) |
