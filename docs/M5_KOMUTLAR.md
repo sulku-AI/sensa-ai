@@ -13,7 +13,7 @@ Bu sayfa sırayla izlenir. Her adımın çıktısı **yalnız sayı ya da kansı
 ```bash
 brew install python@3.12 ffmpeg
 python3.12 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev,models,data,train]"
+pip install -e ".[dev,models,player,data,train]"
 pytest                                   # 30+ test, hepsi sentetik
 ```
 
@@ -37,6 +37,8 @@ python -m sensa_ai.player data/vekil/balon.mp4 --proxy      # modelsiz, anında
 python -m sensa_ai.pipeline analyze data/vekil/balon.mp4 --prompts proxy   # gerçek modeller, vekil istem
 python -m sensa_ai.player data/vekil/balon.mp4 --track data/vekil/balon.blurtrack.json
 ```
+
+Hassasiyet profili: `--profile hafif`, `orta` (varsayılan) ya da `guclu` (daha çok ve daha erken bulanıklık); değerler `config/params.yaml` → `profiles`. Ses PyAV ile çalınır ve oynatıcının saatidir; ses aygıtı yoksa sessiz oynar.
 
 Kendi çektiğin kırmızı balon / kırmızı top videosu da olur. Bakılacak: bulanıklık bölge görünmeden önce başlıyor mu, kenarlar yumuşak mı, ileri sarınca "analiz yetişiyor" bulanıklığı makul sürede kalkıyor mu (H-04).
 

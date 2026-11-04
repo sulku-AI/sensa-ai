@@ -66,25 +66,38 @@ def analyze(video: Path, detector: Detector, prompts: list[str], tracker: Tracke
             chunk.append(frame)
         if not chunk:
             break
-        t = i / fps
-        dets = detector(chunk[0], prompts)
-        if tracker is None or not dets:
-            associate(bt.tracks, t, dets, gap)
-        else:
-            small = [_downscale(f) for f in chunk]
-            per = tracker.track_objects(small, [d.box for d in dets])
-            for j, masks in enumerate(per):
-                fdets = [
-                    Detection(d.label, b, d.score, mask_to_polys(m))
-                    for d, m in zip(dets, masks, strict=False)
-                    if (b := mask_to_box(m)) is not None
-                ]
-                associate(bt.tracks, (i + j) / fps, fdets, gap)
+        process_chunk(chunk, i / fps, fps, detector, prompts, tracker, bt.tracks, gap)
         i += len(chunk)
         bt.analyzed_until_s = i / fps
     cap.release()
     bt.analyzed_until_s = duration
     return bt
+
+
+def process_chunk(
+    chunk: list[np.ndarray],
+    t0: float,
+    fps: float,
+    detector: Detector,
+    prompts: list[str],
+    tracker: Tracker | None,
+    tracks: list[Track],
+    gap: float,
+) -> None:
+    """Bir örnekleme aralığı: ilk karede tespit, varsa kalan karelerde maske takibi. Çevrimdışı ve oynatıcı ortak."""
+    dets = detector(chunk[0], prompts)
+    if tracker is None or not dets:
+        associate(tracks, t0, dets, gap)
+        return
+    small = [_downscale(f) for f in chunk]
+    per = tracker.track_objects(small, [d.box for d in dets])
+    for j, masks in enumerate(per):
+        fdets = [
+            Detection(d.label, b, d.score, mask_to_polys(m))
+            for d, m in zip(dets, masks, strict=False)
+            if (b := mask_to_box(m)) is not None
+        ]
+        associate(tracks, t0 + j / fps, fdets, gap)
 
 
 def _downscale(frame: np.ndarray, max_side: int = 640) -> np.ndarray:
@@ -140,7 +153,9 @@ def main(argv: list[str] | None = None) -> None:
     r.add_argument("video", type=Path)
     r.add_argument("track", type=Path)
     r.add_argument("out", type=Path)
+    ap.add_argument("--profile", default=None, help="hassasiyet: hafif / orta / guclu (params.yaml)")
     args = ap.parse_args(argv)
+    config.set_profile(args.profile)
 
     if args.cmd == "analyze":
         if args.proxy:

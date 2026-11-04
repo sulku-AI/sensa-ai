@@ -43,3 +43,16 @@ def test_compositor_failsafe_then_normal() -> None:
     out, m = comp.render(frame, 1.5)
     assert m is la.Mode.NORMAL
     assert np.array_equal(out[:5, :5], frame[:5, :5]) and not np.array_equal(out, frame)
+
+
+def test_analyzer_with_tracker_fills_frames(proxy_video: Path) -> None:
+    from .test_pipeline import _BoxTracker
+
+    track = BlurTrack("vekil.mp4", 4.0)
+    an = Analyzer(proxy_video, ColorProxyDetector(), ["red balloon"], track, tracker=_BoxTracker())  # type: ignore[arg-type]
+    an.start()
+    deadline = time.time() + 10
+    while track.analyzed_until_s < track.duration_s and time.time() < deadline:
+        time.sleep(0.02)
+    an.stop_event.set()
+    assert len(track.tracks) == 1 and len(track.tracks[0].keyframes) >= 15

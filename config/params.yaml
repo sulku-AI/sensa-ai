@@ -44,3 +44,18 @@ requirements:          # Kabul ölçütleri: docs/TEST_PLANI.md
   frame_coverage:      {value: 0.90, status: target, source: "H-01: olay süresince maskenin bölgeyi örtme oranı"}
   false_alarm_per_min: {value: 0.5,  status: target, source: "H-02: negatif sette dakikada en fazla yanlış bulanıklık"}
   realtime_factor:     {value: 1.2,  status: target, source: "H-03: analiz hızı / oynatma hızı (en az)"}
+
+profiles:              # M4 hassasiyet profilleri: seçilen profil yukarıdaki değerlerin üzerine yazar
+  hafif:               # daha az bulanıklık, daha az yanlış alarm
+    blur.sigma_px:         {value: 12.0, status: estimate, source: "M4, kullanıcı ayarlayacak"}
+    blur.dilate_px:        {value: 8,    status: estimate, source: "M4"}
+    gate.threshold:        {value: 0.40, status: estimate, source: "M4"}
+    detect.box_threshold:  {value: 0.30, status: estimate, source: "M4"}
+  orta:                # varsayılan: yukarıdaki değerler aynen
+    blur.sigma_px:         {value: 18.0, status: estimate, source: "= blur.sigma_px"}
+  guclu:               # kaçırmayı en aza indir: daha çok ve daha erken bulanıklık
+    blur.sigma_px:         {value: 28.0, status: estimate, source: "M4"}
+    blur.dilate_px:        {value: 28,   status: estimate, source: "M4"}
+    blur.ramp_in_s:        {value: 0.80, status: estimate, source: "M4"}
+    gate.threshold:        {value: 0.15, status: estimate, source: "M4"}
+    detect.box_threshold:  {value: 0.18, status: estimate, source: "M4"}
