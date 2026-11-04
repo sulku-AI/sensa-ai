@@ -23,7 +23,7 @@ source .venv/bin/activate
 python --version
 pip install -U pip
 pip install -e ".[dev,models,player,data,train]"
-pytest
+python -m pytest
 ```
 
 `python --version` **3.12.x** demeli (3.14 değil; torch ve bazı paketler 3.14'te henüz sorunlu). `pytest` 40+ test çalıştırır, hepsi sentetik. Bütün sonraki komutlar `sensa-ai` klasöründe, `.venv` açıkken.
