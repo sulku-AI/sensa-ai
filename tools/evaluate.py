@@ -83,6 +83,8 @@ def main() -> None:
             if args.previews and boxes:
                 safety.write_preview(ROOT / "previews" / "negatif" / f"{path.stem}.png", img)
             n += 1
+            if n % 25 == 0:
+                print(f"  {n} görüntü, {time.perf_counter() - t0:.0f} sn", flush=True)
 
     out = score.summary()
     if neg_seen:
