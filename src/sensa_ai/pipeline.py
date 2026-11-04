@@ -83,13 +83,19 @@ def process_chunk(
     tracker: Tracker | None,
     tracks: list[Track],
     gap: float,
+    track_fps: float | None = None,
 ) -> None:
-    """Bir örnekleme aralığı: ilk karede tespit, varsa kalan karelerde maske takibi. Çevrimdışı ve oynatıcı ortak."""
+    """Bir örnekleme aralığı: ilk karede tespit, varsa kalan karelerde maske takibi. Çevrimdışı ve oynatıcı ortak.
+
+    Takip her karede değil, `track.fps` hızında yapılır; aradaki kareleri izin ara değeri doldurur.
+    """
     dets = detector(chunk[0], prompts)
     if tracker is None or not dets:
         associate(tracks, t0, dets, gap)
         return
-    small = [_downscale(f) for f in chunk]
+    tfps = track_fps or float(config.load()["track"]["fps"])
+    step = max(1, round(fps / tfps))
+    small = [_downscale(f) for f in chunk[::step]]
     per = tracker.track_objects(small, [d.box for d in dets])
     for j, masks in enumerate(per):
         fdets = [
@@ -97,7 +103,7 @@ def process_chunk(
             for d, m in zip(dets, masks, strict=False)
             if (b := mask_to_box(m)) is not None
         ]
-        associate(tracks, t0 + j / fps, fdets, gap)
+        associate(tracks, t0 + j * step / fps, fdets, gap)
 
 
 def _downscale(frame: np.ndarray, max_side: int = 640) -> np.ndarray:

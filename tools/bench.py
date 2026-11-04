@@ -6,7 +6,7 @@
 Sonuç: experiments/results/<tarih>_bench_<cihaz>.md (+ .json). Hesap:
     analiz süresi / video saniyesi = sample_fps * (kapı + p_kapı_geçer * dedektör)
     realtime_factor = 1 / bunun değeri  (>= requirements.realtime_factor olmalı)
-Takip (SAM 2 / EdgeTAM) ayrıca ölçülür; kare başı maliyeti tam fps ile çarpılır.
+Takip (SAM 2 / EdgeTAM) ayrıca ölçülür; kare başı maliyeti track.fps ile çarpılır.
 """
 
 from __future__ import annotations
@@ -85,8 +85,10 @@ def main() -> None:
         t_track = tr.bench(frames, (0.2, 0.35, 0.4, 0.65))
         res["takip_model"] = tr.model_id
         res["takip_ms_kare"] = round(t_track * 1000, 1)
-        # takip yalnız bölge varken çalışır; aynı geçiş oranını ve 24 fps'i varsay
-        load += args.gate_pass * 24 * t_track
+        # takip yalnız bölge varken ve track.fps hızında çalışır
+        tfps = float(p["track"]["fps"])
+        res["takip_fps"] = tfps
+        load += args.gate_pass * tfps * t_track
 
     res["analiz_s_video_s"] = round(load, 3)
     res["realtime_factor"] = round(1 / load, 2) if load else float("inf")

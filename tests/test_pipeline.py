@@ -52,11 +52,11 @@ class _BoxTracker:
         return out
 
 
-def test_tracker_fills_every_frame(proxy_video: Path) -> None:
+def test_tracker_fills_between_samples(proxy_video: Path) -> None:
     bt = pipeline.analyze(proxy_video, ColorProxyDetector(), ["red balloon"], tracker=_BoxTracker())  # type: ignore[arg-type]
     assert len(bt.tracks) == 1
-    # 10 fps, örnekleme 2 fps -> takip ile kare başına anahtar kare (2 sn x 10 = ~20)
-    assert len(bt.tracks[0].keyframes) >= 18
+    # 10 fps video, takip track.fps (6) -> her 2. karede anahtar kare (2 sn x 5 = ~10)
+    assert len(bt.tracks[0].keyframes) >= 9
     assert all(k.poly for k in bt.tracks[0].keyframes)  # maske -> poligon izde
 
 
@@ -141,3 +141,28 @@ def test_label_events_guard_and_save(tmp_path: Path) -> None:
     out = tmp_path / "e.json"
     label_events.save(out, "x.mp4", [{"start": 1.0, "end": 2.0, "box": None}, {"start": 5.0, "end": None}])
     assert json.loads(out.read_text())["events"] == [{"start": 1.0, "end": 2.0, "box": None}]
+
+
+def test_tracking_runs_at_track_fps() -> None:
+    """Takip her karede değil track.fps hızında: 25 fps, 12 karelik aralık, track_fps 5 -> 3 kare."""
+    from sensa_ai.detect import Detection
+    from sensa_ai.pipeline import process_chunk
+
+    class StubDet:
+        def __call__(self, frame, prompts):  # type: ignore[no-untyped-def]
+            return [Detection("x", (0.1, 0.1, 0.3, 0.3), 0.9)]
+
+    class StubTracker:
+        seen = 0
+
+        def track_objects(self, frames, boxes):  # type: ignore[no-untyped-def]
+            StubTracker.seen = len(frames)
+            m = np.zeros(frames[0].shape[:2], bool)
+            m[10:30, 10:30] = True
+            return [[m] for _ in frames]
+
+    frames = [np.zeros((120, 160, 3), np.uint8) for _ in range(12)]
+    tracks: list = []
+    process_chunk(frames, 0.0, 25.0, StubDet(), ["x"], StubTracker(), tracks, 1.0, track_fps=5.0)  # type: ignore[arg-type]
+    assert StubTracker.seen == 3
+    assert [round(k.t, 2) for k in tracks[0].keyframes] == [0.0, 0.2, 0.4]

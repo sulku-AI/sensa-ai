@@ -55,4 +55,4 @@ def test_analyzer_with_tracker_fills_frames(proxy_video: Path) -> None:
     while track.analyzed_until_s < track.duration_s and time.time() < deadline:
         time.sleep(0.02)
     an.stop_event.set()
-    assert len(track.tracks) == 1 and len(track.tracks[0].keyframes) >= 15
+    assert len(track.tracks) == 1 and len(track.tracks[0].keyframes) >= 9  # track.fps hızında
