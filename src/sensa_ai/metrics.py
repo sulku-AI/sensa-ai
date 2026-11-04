@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 import cv2
 import numpy as np
 
-from .blurtrack import Box
+from .blurtrack import BlurTrack, Box
 
 
 def polygons_to_mask(shape: tuple[int, int], polygons: list[list[float]]) -> np.ndarray:
@@ -69,3 +69,56 @@ class Score:
             "negatif_yanlis_alarm_orani": self.neg_flagged / self.n_neg if self.n_neg else float("nan"),
             "negatif_bulanik_alan_ort": float(np.mean(self.neg_area)) if self.neg_area else float("nan"),
         }
+
+
+@dataclass
+class Event:
+    """Ortağın etiketi: [start, end) aralığında rahatsız edici bölge var. box isteğe bağlı (normalize)."""
+
+    start: float
+    end: float
+    box: Box | None = None
+
+
+def _overlaps(a: Box, b: Box) -> bool:
+    return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+
+
+def event_scores(
+    track: BlurTrack, events: list[Event], step_s: float = 0.1, ramp_in_s: float = 0.0, ramp_out_s: float = 0.0
+) -> dict[str, float]:
+    """H-01 video düzeyi: olay yakalama, kare kapsama, geç başlama, olay dışı bulanıklık (H-02).
+
+    Bir an "kapsanmış" sayılır: o anda en az bir bulanık bölge var ve (etiket kutusu varsa) onunla örtüşüyor.
+    """
+    duration = track.duration_s
+    covered_per_event: list[float] = []
+    lateness: list[float] = []
+    n_steps = int(duration / step_s) + 1
+    blurred_outside = 0
+    for i in range(n_steps):
+        t = i * step_s
+        regions = track.active(t, ramp_in_s, ramp_out_s)
+        if regions and not any(e.start <= t < e.end for e in events):
+            blurred_outside += 1
+    for e in events:
+        ts = np.arange(e.start, e.end, step_s)
+        hits = []
+        for t in ts:
+            regions = track.active(float(t), ramp_in_s, ramp_out_s)
+            hits.append(any(e.box is None or _overlaps(b, e.box) for b, _ in regions))
+        covered_per_event.append(float(np.mean(hits)) if len(hits) else 1.0)
+        first = next((float(t) for t, h in zip(ts, hits, strict=True) if h), None)
+        lateness.append(first - e.start if first is not None else e.end - e.start)
+    outside_s = blurred_outside * step_s
+    clean_min = max(duration - sum(e.end - e.start for e in events), 1e-9) / 60
+    cov = np.asarray(covered_per_event)
+    return {
+        "olay": len(events),
+        "olay_yakalama": float((cov >= 0.5).mean()) if cov.size else float("nan"),
+        "kare_kapsama_ort": float(cov.mean()) if cov.size else float("nan"),
+        "kare_kapsama_min": float(cov.min()) if cov.size else float("nan"),
+        "gec_baslama_ort_s": float(np.mean(lateness)) if lateness else float("nan"),
+        "olay_disi_bulanik_s": outside_s,
+        "olay_disi_bulanik_s_dk": outside_s / clean_min,
+    }

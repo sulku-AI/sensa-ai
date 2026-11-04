@@ -51,7 +51,7 @@ jobs:
       - name: Required docs exist
         run: |
           for f in README.md CLAUDE.md docs/DECISIONS.md docs/FAILED_APPROACHES.md docs/MODEL_SECIMI.md \
-                   docs/YOL_HARITASI.md docs/TEST_PLANI.md docs/MODEL_ARASTIRMA.md docs/M5_KOMUTLAR.md; do
+                   docs/YOL_HARITASI.md docs/TEST_PLANI.md docs/MODEL_ARASTIRMA.md docs/M5_KOMUTLAR.md docs/BLURTRACK_FORMAT.md; do
             test -f "$f" || { echo "missing $f"; exit 1; }
           done
 

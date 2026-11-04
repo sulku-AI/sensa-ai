@@ -64,6 +64,25 @@ python -m tools.evaluate --pos data/pozitif/blood_seg_joost --neg data/negatif/c
 
 Sonuç: `experiments/results/<tarih>_eval_*.md`. Bakılacak satırlar: `yakalama_orani` (hedef 0.95), `ortalama_kapsama` (hedef 0.90), `negatif_yanlis_alarm_orani`. Bu dosyayı bana (Claude'a) da verebilirsin, eşikleri ben ayarlarım.
 
+## 5b. Video düzeyinde değerlendirme (ortak etiketledikten sonra)
+
+Ortak pozitif videoları izleyip `data/etiket/<video>.json` yazar (biçim `tools/eval_video.py` başında; yalnız zaman aralığı, görüntü yok).
+
+```bash
+python -m tools.eval_video data/pozitif/videolar --labels data/etiket
+python -m tools.eval_video data/vekil --labels data/etiket --proxy      # vekil videolarla deneme
+```
+
+Sonuç: olay yakalama, kare kapsama, geç başlama (saniye), olay dışı bulanıklık. Yalnız sayı.
+
+## 5c. Tanıtım klibi (Instagram, kansız)
+
+```bash
+python -m tools.before_after data/vekil/balon.mp4 previews/balon_once_sonra.mp4 --proxy --vertical
+```
+
+Pozitif klasörden video verilirse araç reddeder.
+
 ## 6. Damıtma eğitimi (M5, gece prize takılıyken)
 
 ```bash

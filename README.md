@@ -15,6 +15,7 @@ Neden: ayna dokunuşu sinestezisi olan biri için kanlı bir görüntü fiziksel
 | [docs/MODEL_ARASTIRMA.md](docs/MODEL_ARASTIRMA.md) | Model ve veri seti araştırması, lisanslar, kaynaklar |
 | [docs/MODEL_SECIMI.md](docs/MODEL_SECIMI.md) | SigLIP → Grounding DINO / OWLv2 → SAM 2.1 hattı, lisanslar, riskler |
 | [docs/TEST_PLANI.md](docs/TEST_PLANI.md) | Kan görmeden test: kim neye bakar, hipotezler H-01…H-06 |
+| [docs/BLURTRACK_FORMAT.md](docs/BLURTRACK_FORMAT.md) | Bulanıklaştırma izi dosya biçimi (platformlar için) |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Karar defteri |
 | [docs/FAILED_APPROACHES.md](docs/FAILED_APPROACHES.md) | Bırakılan yollar (elle etiketli Faster R-CNN) |
 
@@ -53,10 +54,11 @@ src/sensa_ai/
   models.py               SigLIP kapı, LLMDet / Grounding DINO / OWLv2 metinle bölge
   tracking.py             SAM 2.1 / EdgeTAM maske takibi
   metrics.py              kapsama ve yanlış alarm ölçütleri (yalnız sayı)
-  pipeline.py             çevrimdışı analyze / render
+  pipeline.py             çevrimdışı analyze / render (ses ffmpeg ile)
+  audio.py                ses ana saat (PyAV + sounddevice)
   player.py               canlı oynatıcı: analiz iş parçacığı + bulanıklık
 tools/                    bench, evaluate, autolabel, fetch_datasets, fetch_negatives,
-                          train_rfdetr, make_proxy_video
+                          train_rfdetr, make_proxy_video, eval_video, before_after
 tests/                    sentetik, kansız testler (model testleri rastgele ağırlıkla, indirmesiz)
 data/                     yerel veri (repoya girmez), bkz. data/README.md
 experiments/results/      tarihli deney sonuçları

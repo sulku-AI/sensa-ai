@@ -95,3 +95,37 @@ def test_render_keeps_audio(proxy_video: Path, tmp_path: Path) -> None:
         check=True,
     ).stdout.split()
     assert "video" in probe and "audio" in probe
+
+
+def test_eval_video_on_proxy(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    import json
+    import sys
+
+    from tools import eval_video
+    from tools.make_proxy_video import make
+
+    vids, labs = tmp_path / "v", tmp_path / "l"
+    make(vids / "balon.mp4", seconds=16, fps=10, w=320, h=180)
+    labs.mkdir()
+    (labs / "balon.json").write_text(json.dumps({"video": "balon.mp4", "events": [{"start": 4.0, "end": 14.0}]}))
+    monkeypatch.setattr(eval_video, "ROOT", tmp_path)
+    monkeypatch.setattr(sys, "argv", ["x", str(vids), "--labels", str(labs), "--proxy"])
+    eval_video.main()
+    rows = json.loads(next((tmp_path / "experiments" / "results").glob("*_eval_video.json")).read_text())
+    assert rows[0]["olay_yakalama"] == 1.0
+    assert rows[0]["kare_kapsama_ort"] > 0.85  # 9-10 sn arası balon saklı: kapsama tam olmayabilir
+
+
+def test_before_after_refuses_positive_and_renders_proxy(tmp_path: Path) -> None:
+    import pytest
+
+    from tools import before_after
+    from tools.make_proxy_video import make
+
+    with pytest.raises(PermissionError):
+        before_after.guard(tmp_path / "pozitif" / "x.mp4", data_root=tmp_path)
+    v = make(tmp_path / "balon.mp4", seconds=6, fps=10, w=160, h=90)
+    bt = pipeline.analyze(v, ColorProxyDetector(), ["red balloon"])
+    out = before_after.make(v, tmp_path / "ba.mp4", bt, vertical=True)
+    cap = cv2.VideoCapture(str(out))
+    assert int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) == 180 and int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) == 160
