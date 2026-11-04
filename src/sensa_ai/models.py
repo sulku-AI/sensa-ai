@@ -114,7 +114,8 @@ class TextDetector:
         h, w = frame_bgr.shape[:2]
         image = _to_pil(frame_bgr)
         labels = [prompts]
-        inputs = self.processor(images=image, text=labels, return_tensors="pt").to(self.device)
+        extra = {"padding": True} if self.family == "owlv2" else {}  # OWL istem uzunlukları farklı olabilir
+        inputs = self.processor(images=image, text=labels, return_tensors="pt", **extra).to(self.device)
         with torch.no_grad():
             outputs = self.model(**inputs)
         if self.family == "owlv2":
@@ -131,7 +132,7 @@ class TextDetector:
                 text_threshold=self.text_threshold,
                 target_sizes=[(h, w)],
             )[0]
-        names = res.get("text_labels", res.get("labels"))
+        names = res["text_labels"] if "text_labels" in res else res.get("labels")
         max_n = int(config.load()["detect"]["max_regions"])
         order = res["scores"].argsort(descending=True)[:max_n]
         return [

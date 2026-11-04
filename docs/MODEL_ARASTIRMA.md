@@ -8,7 +8,7 @@ Amaç: kanlı bölgeleri **kimse görüntü görmeden** bulup takip edebilecek a
 |---|---|---|---|
 | Kare kapısı | SigLIP (base) | CLIP ViT-B/32 | Ucuz, sıfır atış, pozitif ve negatif istemleri aynı anda karşılaştırır |
 | Metinle bölge | **LLMDet tiny/base** | OWLv2 base, Grounding DINO tiny | LLMDet: Apache 2.0, transformers'ta, MM-Grounding-DINO ile aynı arayüz, LVIS'te GD'den güçlü [3] |
-| Maske takibi | **SAM 2.1 tiny** | EdgeTAM | İkisi de Apache 2.0. EdgeTAM SAM 2'nin cihaz üstü hafif sürümü [6], M5 için aday |
+| Maske takibi | **EdgeTAM** (M5) | SAM 2.1 tiny (2060) | İkisi de Apache 2.0. EdgeTAM SAM 2'nin cihaz üstü hafif sürümü [6]; transformers kimliği `yonigozlan/edgetam-video-1` [14] |
 | Damıtma (hızlı model) | **RF-DETR-Seg Nano/Small** | — | Apache 2.0 bütün segmentasyon boyutlarında [4]; YOLOv8-seg (AGPL) yerine |
 | Öğretmen (yalnız çevrimdışı) | SAM 3 | — | Metinle maske + takip tek modelde [5], ama lisansı açık kaynak değil ve 6 GB'a sığmaz (aşağıda) |
 
@@ -62,10 +62,12 @@ Negatif set (Emirhan izleyebilir) Open Images / COCO'dan sınıf adına göre se
 
 ## 6. Donanım planı
 
+**Ana hedef M5** (D-012): Emirhan okulda dizüstüyle çalıştırmak istiyor.
+
 | İş | Makine | Neden |
 |---|---|---|
-| Otomatik etiketleme, değerlendirme, RF-DETR-Seg eğitimi | RTX 2060 (Linux) | CUDA; 6 GB'a tiny/small modeller FP16 ile sığar (tahmin, `tools/bench.py` ölçecek) |
-| Oynatıcı denemesi, vekil videolar | MacBook Air M5 | MPS; fansız, uzun işte ısıl kısma olur |
+| Hepsi: oynatıcı, değerlendirme, otomatik etiketleme, RF-DETR-Seg eğitimi | **MacBook Air M5** (MPS) | Varsayılanlar buna göre: LLMDet tiny, SigLIP base, EdgeTAM, FP32. Fansız kasa uzun işte ısınır; eğitim geceleri prizde |
+| Uzun eğitim, yedek | RTX 2060 6 GB (Linux, masaüstü) | CUDA + FP16; her gece açık değil |
 | Bulut (bu oturum) | Kod, test, belge | Ekran kartı yok; HF ve Roboflow erişimi kapalı |
 
 ## Kaynaklar
@@ -83,3 +85,4 @@ Negatif set (Emirhan izleyebilir) Open Images / COCO'dan sınıf adına göre se
 11. https://universe.roboflow.com/backupgeneral/blood_segmentation_2 (aynı uyarı)
 12. https://universe.roboflow.com/angel-macwan-6m3sx/blood-segmentation (aynı uyarı)
 13. https://huggingface.co/datasets/NeuralShell/Gore-Blood-Dataset-v1.0 (aynı uyarı)
+14. transformers EdgeTAM Video belgesi: https://huggingface.co/docs/transformers/model_doc/edgetam_video

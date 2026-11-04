@@ -34,3 +34,36 @@ def test_proxy_end_to_end(proxy_video: Path, tmp_path: Path) -> None:
     corner = max(c for _, c in diffs)
     assert during > 2 * early  # bölge görünürken belirgin biçimde bulanık
     assert during > 2 * corner  # bulanıklık bölgede, köşede değil
+
+
+class _BoxTracker:
+    """Takip yerine: verilen kutuyu her karede bir piksel sağa kaydırıp maske döndürür."""
+
+    def track_objects(self, frames, boxes, start_idx=0):  # type: ignore[no-untyped-def]
+        out = []
+        for j, f in enumerate(frames):
+            h, w = f.shape[:2]
+            ms = []
+            for x0, y0, x1, y1 in boxes:
+                m = np.zeros((h, w), bool)
+                m[int(y0 * h) : int(y1 * h), int(x0 * w) + j : int(x1 * w) + j] = True
+                ms.append(m)
+            out.append(ms)
+        return out
+
+
+def test_tracker_fills_every_frame(proxy_video: Path) -> None:
+    bt = pipeline.analyze(proxy_video, ColorProxyDetector(), ["red balloon"], tracker=_BoxTracker())  # type: ignore[arg-type]
+    assert len(bt.tracks) == 1
+    # 10 fps, örnekleme 2 fps -> takip ile kare başına anahtar kare (2 sn x 10 = ~20)
+    assert len(bt.tracks[0].keyframes) >= 18
+
+
+def test_make_proxy_video_and_analyze(tmp_path: Path) -> None:
+    from tools.make_proxy_video import make
+
+    v = make(tmp_path / "balon.mp4", seconds=16, fps=10, w=320, h=180)
+    bt = pipeline.analyze(v, ColorProxyDetector(), ["red balloon"])
+    starts = sorted(tr.start for tr in bt.tracks)
+    assert starts and 3.5 <= starts[0] <= 4.5  # balon 4. saniyede
+    assert all(tr.end <= 14.5 for tr in bt.tracks)

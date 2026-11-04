@@ -4,16 +4,16 @@ Her adımın bir **çıkış kapısı** var: kapı geçilmeden sonrakine geçilm
 
 | Adım | İş | Çıkış kapısı | Kim bakar |
 |---|---|---|---|
-| **M0** (bu PR) | Repo yapısı: params.yaml, karar defteri, güvenli önizleme, iz biçimi, bölgesel bulanıklık, vekil uçtan uca test, CI | CI yeşil; `pytest` vekil videoda izi bulur ve bulanıklaştırır | CI |
-| **M1** | Çevrimdışı gerçek hat: SigLIP + Grounding DINO + SAM 2.1 `Detector` arkasında; `analyze` → `.blurtrack.json`, `render` → bulanık mp4 (ses ffmpeg ile kopyalanır); maske RLE izde | Vekil istemle ("red balloon") gerçek bir videoda doğru bölge bulanıklaşıyor | **Emirhan izler** (vekil) |
-| **M2** | Gerçek istemler; negatif set (H-02) ve pozitif set metrikleri (H-01, H-05); Grounding DINO ve OWLv2 karşılaştırması; eşik ayarı | H-01 ve H-02 ölçütleri; sonuç `experiments/results/` | Negatif: Emirhan. Pozitif: model + ortak |
-| **M3** | Canlı oynatıcı: PyAV ile çözme, ses saati, PySide6 ekran; analiz iş parçacığı oynatma kafasının 30 sn önünde (`lookahead.next_window`); tampon kısalınca güvenli mod (D-007); ileri sarmada yeniden tarama | H-03: gerçek zamandan hızlı, tampon düşmüyor; vekil videoda canlı bulanıklık | Emirhan (vekil) |
+| **M0** ✓ | Repo yapısı: params.yaml, karar defteri, güvenli önizleme, iz biçimi, bölgesel bulanıklık, vekil uçtan uca test, CI | CI yeşil; `pytest` vekil videoda izi bulur ve bulanıklaştırır | CI |
+| **M1** (kod yazıldı, ölçüm M5'te) | Çevrimdışı gerçek hat: SigLIP + LLMDet (ya da OWLv2 / Grounding DINO) + EdgeTAM / SAM 2.1 `Detector` arkasında; `analyze` → `.blurtrack.json`, `render` → bulanık mp4 (ses ffmpeg ile kopyalanır); maske RLE izde | Vekil istemle ("red balloon") gerçek bir videoda doğru bölge bulanıklaşıyor | **Emirhan izler** (vekil) |
+| **M2** (araçlar hazır: `tools/evaluate`, `fetch_datasets`, `fetch_negatives`) | Gerçek istemler; negatif set (H-02) ve pozitif set metrikleri (H-01, H-05); Grounding DINO ve OWLv2 karşılaştırması; eşik ayarı | H-01 ve H-02 ölçütleri; sonuç `experiments/results/` | Negatif: Emirhan. Pozitif: model + ortak |
+| **M3** (iskelet çalışıyor; ses geçici olarak ffplay) | Canlı oynatıcı: OpenCV penceresi, ses ffplay (kalıcısı PyAV ses saati); analiz iş parçacığı oynatma kafasının 30 sn önünde (`lookahead.next_window`); tampon kısalınca güvenli mod (D-007); ileri sarmada yeniden tarama | H-03: gerçek zamandan hızlı, tampon düşmüyor; vekil videoda canlı bulanıklık | Emirhan (vekil) |
 | **M4** | Hassasiyet ve bulanıklık gücü ayarı (kişi profili), H-04 ve H-06; Instagram için kansız önce/sonra klipleri (vekil ve negatif) | Ortağın kontrol listesinde 0 sızan olay; Emirhan bulanıklığı "rahatsız etmiyor" der | Ortak + Emirhan (vekil/negatif) |
-| **M5** | Damıtma: hattın otomatik etiketleriyle küçük hızlı model; tarayıcı eklentisi; platformlar için iz biçimi belgesi | Ayrı plan | — |
+| **M5** (eğitim betiği hazır: `tools/autolabel`, `tools/train_rfdetr`) | Damıtma: RF-DETR-Seg Nano, hattın otomatik etiketleriyle küçük hızlı model; tarayıcı eklentisi; platformlar için iz biçimi belgesi | Ayrı plan | — |
 
 ## M0 sonrası hemen yapılabilecekler
 
-1. Emirhan'ın ekran kartını öğrenmek (model boyutu buna bağlı).
+1. ~~Emirhan'ın ekran kartı~~ → M5 ana hedef, 2060 yedek (D-012). Sıradaki: `docs/M5_KOMUTLAR.md` adım 1-4.
 2. Vekil ve negatif klip toplamak: 5-10 kısa video (kırmızı balon, ketçap, kırmızı boya, şarap, kırmızı ışıklı sahne).
 3. Ortak bulmak (pozitif seti etiketleyecek ve son kontrolü yapacak kişi).
 

@@ -1,4 +1,6 @@
-# Model seçimi (2026-11-03)
+# Model seçimi (2026-11-03, güncelleme 2026-11-04)
+
+> **Güncelleme (D-011, D-012):** B aşamasında ilk aday LLMDet, takipte M5 için EdgeTAM, damıtma hedefi RF-DETR-Seg. Ayrıntı ve kaynaklar: [MODEL_ARASTIRMA.md](MODEL_ARASTIRMA.md). Aşağıdaki tablo ilk değerlendirmedir.
 
 Kısa cevap: **elle etiketli veri seti yok.** Hedef bölgeyi metin isteminden ("blood", "open wound") bulan açık modeller ve bulduğu bölgeyi karelere yayan SAM 2 kullanılır. Bütün sayılar `config/params.yaml`'da; burada kopya sayı yok.
 
@@ -37,8 +39,8 @@ Kullanılmayanlar:
 
 Hedef normal bir dizüstü ekran kartı. Hız ölçülmedi; H-03 bunu ölçer. Ekran kartı yetmezse: daha küçük sürümler (Grounding DINO tiny, SAM 2.1 tiny), daha düşük `sample_fps`, ya da analiz önceden çevrimdışı yapılır ve oynatıcı yalnız izi uygular. Colab, M1-M2 deneyleri için yedek.
 
-**Açık soru:** Emirhan'ın bilgisayarındaki ekran kartı (model ve VRAM). M1 öncesi lazım.
+**Cevaplandı (D-012):** ana hedef MacBook Air M5 (MPS), yedek RTX 2060 6 GB.
 
 ## Kod
 
-Modeller `sensa_ai.detect.Detector` arayüzünün arkasına eklenir (M1). Şimdilik yalnız `ColorProxyDetector` var: modelsiz, kırmızı alan bulan vekil; gerçek tespit değil, boru hattını kansız sınamak için (D-005).
+Modeller `sensa_ai.models` (kapı, dedektör) ve `sensa_ai.tracking` (takip) içinde, `Detector` arayüzünün arkasında. `ColorProxyDetector` modelsiz vekildir: gerçek tespit değil, boru hattını kansız sınamak için (D-005).

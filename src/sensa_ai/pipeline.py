@@ -12,10 +12,12 @@ import argparse
 from pathlib import Path
 
 import cv2
+import numpy as np
 
 from . import blur, config
 from .blurtrack import BlurTrack, Box, Keyframe, Track
 from .detect import ColorProxyDetector, Detection, Detector
+from .tracking import Tracker, mask_to_box
 
 
 def iou(a: Box, b: Box) -> float:
@@ -42,27 +44,52 @@ def associate(tracks: list[Track], t: float, dets: list[Detection], max_gap_s: f
             open_tracks.append(tr)
 
 
-def analyze(video: Path, detector: Detector, prompts: list[str]) -> BlurTrack:
+def analyze(video: Path, detector: Detector, prompts: list[str], tracker: Tracker | None = None) -> BlurTrack:
+    """Örnek karede tespit; `tracker` verilirse tespitler sonraki örneğe kadar her karede maskeyle takip edilir."""
     cfg = config.load()
     cap = cv2.VideoCapture(str(video))
     fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
     n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     duration = n / fps
     step = max(1, round(fps / cfg["lookahead"]["sample_fps"]))
+    gap = cfg["track"]["max_gap_s"]
     bt = BlurTrack(video.name, duration)
     i = 0
     while True:
-        ok, frame = cap.read()
-        if not ok:
+        chunk: list[np.ndarray] = []
+        for _ in range(step):
+            ok, frame = cap.read()
+            if not ok:
+                break
+            chunk.append(frame)
+        if not chunk:
             break
-        if i % step == 0:
-            t = i / fps
-            associate(bt.tracks, t, detector(frame, prompts), cfg["track"]["max_gap_s"])
-            bt.analyzed_until_s = t
-        i += 1
+        t = i / fps
+        dets = detector(chunk[0], prompts)
+        if tracker is None or not dets:
+            associate(bt.tracks, t, dets, gap)
+        else:
+            small = [_downscale(f) for f in chunk]
+            per = tracker.track_objects(small, [d.box for d in dets])
+            for j, masks in enumerate(per):
+                fdets = [
+                    Detection(d.label, b, d.score)
+                    for d, m in zip(dets, masks, strict=False)
+                    if (b := mask_to_box(m)) is not None
+                ]
+                associate(bt.tracks, (i + j) / fps, fdets, gap)
+        i += len(chunk)
+        bt.analyzed_until_s = i / fps
     cap.release()
     bt.analyzed_until_s = duration
     return bt
+
+
+def _downscale(frame: np.ndarray, max_side: int = 640) -> np.ndarray:
+    """Takip küçük karede yapılır (kutular normalize olduğundan sonuç değişmez)."""
+    h, w = frame.shape[:2]
+    s = max_side / max(h, w)
+    return frame if s >= 1 else cv2.resize(frame, (round(w * s), round(h * s)), interpolation=cv2.INTER_AREA)
 
 
 def render(video: Path, bt: BlurTrack, out: Path) -> None:
@@ -90,6 +117,9 @@ def main(argv: list[str] | None = None) -> None:
     a = sub.add_parser("analyze")
     a.add_argument("video", type=Path)
     a.add_argument("--proxy", action="store_true", help="kansız vekil dedektör (D-005)")
+    a.add_argument("--prompts", default="positive", choices=["positive", "proxy"], help="gerçek modelde istem seti")
+    a.add_argument("--no-track", action="store_true", help="maske takibini kapat (daha hızlı, daha kaba)")
+    a.add_argument("--device", default=None)
     r = sub.add_parser("render")
     r.add_argument("video", type=Path)
     r.add_argument("track", type=Path)
@@ -97,10 +127,15 @@ def main(argv: list[str] | None = None) -> None:
     args = ap.parse_args(argv)
 
     if args.cmd == "analyze":
-        if not args.proxy:
-            raise SystemExit("Gerçek modeller M1'de eklenecek; şimdilik --proxy kullan.")
-        prompts = config.load_prompts()["proxy"]
-        bt = analyze(args.video, ColorProxyDetector(), prompts)
+        if args.proxy:
+            bt = analyze(args.video, ColorProxyDetector(), config.load_prompts()["proxy"])
+        else:
+            from . import models
+
+            tracker = None if args.no_track else Tracker.from_pretrained(device=args.device)
+            # vekil istemle ("red balloon") kapı kapalı: kapının negatifleri kan için ayarlı
+            det = models.build_default(device=args.device, use_gate=args.prompts == "positive")
+            bt = analyze(args.video, det, config.load_prompts()[args.prompts], tracker)
         out = args.video.with_suffix(".blurtrack.json")
         bt.save(out)
         print(f"{len(bt.tracks)} iz -> {out}")

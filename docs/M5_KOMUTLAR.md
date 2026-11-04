@@ -1,0 +1,76 @@
+# M5'te çalıştırma (MacBook Air M5, okulda)
+
+Bu sayfa sırayla izlenir. Her adımın çıktısı **yalnız sayı ya da kansız görüntüdür**; pozitif (kanlı) hiçbir şey ekrana gelmez. Ana hedef M5 (D-012). Bütün komutlar repo kökünde.
+
+## 0. Güvenlik kuralları (önce oku)
+
+- `data/pozitif/` klasörünü **Finder'da açma**, Quick Look (boşluk tuşu) kullanma. Finder küçük resim gösterir. Araçlar klasörü kilitler (yalnız sen ve betikler) ve Spotlight dizinlemesini kapatır.
+- Roboflow Universe ve Hugging Face'in **veri seti sayfalarını tarayıcıda açma**, örnek görüntü gösterirler. API anahtarı için yalnız roboflow.com → Settings → API Keys sayfası (görüntü yok).
+- `previews/` altındaki her şey `safe_preview`'dan geçmiş, gri ve pikselleştirilmiş küçük resimdir; yine de yalnız negatif ve vekil içerik için üretilir.
+
+## 1. Kurulum (bir kez, ~10 dk, internet gerekir)
+
+```bash
+brew install python@3.12 ffmpeg
+python3.12 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev,models,data,train]"
+pytest                                   # 30+ test, hepsi sentetik
+```
+
+İlk model çalıştırmasında ağırlıklar Hugging Face'ten iner (LLMDet tiny, SigLIP base, EdgeTAM: toplam ~1.5 GB, tahmin).
+
+## 2. Hız ölçümü (H-03), ~5 dk
+
+```bash
+python -m tools.bench                              # LLMDet tiny + SigLIP + EdgeTAM, MPS
+python -m tools.bench --detector owlv2_base        # karşılaştırma
+python -m tools.bench --no-track --res 480         # daha hafif ayar
+```
+
+Sonuç: `experiments/results/<tarih>_bench_mps.md`. `realtime_factor` ≥ 1.2 olmalı. Altındaysa sırayla: `--res 480`, `config/params.yaml` → `lookahead.sample_fps` 1.0, `--detector owlv2_base`.
+
+## 3. Vekil video ile oynatıcı (sen izleyebilirsin)
+
+```bash
+python -m tools.make_proxy_video data/vekil/balon.mp4      # 20 sn, kırmızı balon hareket eder
+python -m sensa_ai.player data/vekil/balon.mp4 --proxy      # modelsiz, anında
+python -m sensa_ai.pipeline analyze data/vekil/balon.mp4 --prompts proxy   # gerçek modeller, vekil istem
+python -m sensa_ai.player data/vekil/balon.mp4 --track data/vekil/balon.blurtrack.json
+```
+
+Kendi çektiğin kırmızı balon / kırmızı top videosu da olur. Bakılacak: bulanıklık bölge görünmeden önce başlıyor mu, kenarlar yumuşak mı, ileri sarınca "analiz yetişiyor" bulanıklığı makul sürede kalkıyor mu (H-04).
+
+## 4. Negatif set (H-02, sen izleyebilirsin)
+
+```bash
+python -m tools.fetch_negatives --per-class 40          # COCO: domates, şarap, kırmızı ışık, pizza...
+python -m tools.evaluate --neg data/negatif/coco --previews
+```
+
+Sonuç: yanlış alarm oranı. `--previews` yanlış alarm veren negatiflerin güvenli küçük resmini `previews/negatif/` altına yazar.
+
+## 5. Pozitif set (H-01). Sen görmeden, yalnız sayı
+
+```bash
+export ROBOFLOW_API_KEY=...                  # roboflow.com > Settings > API Keys
+python -m tools.fetch_datasets --list
+python -m tools.fetch_datasets blood_seg_joost blood_seg_backup
+python -m tools.evaluate --pos data/pozitif/blood_seg_joost --pos data/pozitif/blood_seg_backup \
+    --neg data/negatif/coco --detector llmdet_tiny
+python -m tools.evaluate --pos data/pozitif/blood_seg_joost --neg data/negatif/coco --detector owlv2_base
+```
+
+Sonuç: `experiments/results/<tarih>_eval_*.md`. Bakılacak satırlar: `yakalama_orani` (hedef 0.95), `ortalama_kapsama` (hedef 0.90), `negatif_yanlis_alarm_orani`. Bu dosyayı bana (Claude'a) da verebilirsin, eşikleri ben ayarlarım.
+
+## 6. Damıtma eğitimi (M5, gece prize takılıyken)
+
+```bash
+python -m tools.train_rfdetr prepare --src data/pozitif/blood_seg_joost data/pozitif/blood_seg_backup --neg data/negatif/coco
+python -m tools.train_rfdetr train --epochs 30     # MPS; saatler sürebilir, kapak açık ve prizde
+```
+
+Ağırlıklar `models/rfdetr_seg_nano/` altına (repoya girmez). MPS'te bir hata olursa aynı komut `--device cpu` ile çalışır (çok yavaş), ya da masaüstündeki 2060'ta `--device cuda`.
+
+## 7. Bir sorun çıkarsa
+
+Hata metnini (yalnız terminal metni, görüntü değil) thread'e yapıştır. `experiments/results/` dosyaları da olur.
