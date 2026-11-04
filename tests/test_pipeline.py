@@ -129,3 +129,15 @@ def test_before_after_refuses_positive_and_renders_proxy(tmp_path: Path) -> None
     out = before_after.make(v, tmp_path / "ba.mp4", bt, vertical=True)
     cap = cv2.VideoCapture(str(out))
     assert int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) == 180 and int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) == 160
+
+
+def test_label_events_guard_and_save(tmp_path: Path) -> None:
+    import json
+
+    from tools import label_events
+
+    assert label_events.needs_partner(tmp_path / "pozitif" / "a" / "x.mp4", data_root=tmp_path)
+    assert not label_events.needs_partner(tmp_path / "vekil" / "x.mp4", data_root=tmp_path)
+    out = tmp_path / "e.json"
+    label_events.save(out, "x.mp4", [{"start": 1.0, "end": 2.0, "box": None}, {"start": 5.0, "end": None}])
+    assert json.loads(out.read_text())["events"] == [{"start": 1.0, "end": 2.0, "box": None}]

@@ -20,7 +20,19 @@ Metin özetleri **nötr şablonla** yazılır, betimleme yok: `klip 07 · 00:41-
 - İnsan için görüntü yazmanın tek yolu `safety.write_preview`: 160 px, gri ton, 16 px bloklar. Kırmızı renk ve ayrıntı tanınmaz. `tests/test_safety.py` bunu ve başka modülün `imwrite` kullanmadığını sınar.
 - `data/pozitif/` yerelde, repoya girmez. CI `no-media` işi repoda video/görüntü olursa kırmızı yanar.
 - Testler yalnız sentetik renkli şekiller üretir (`tests/conftest.py`).
-- Hata ayıklama araçları ham kare göstermez; pencere açan araç yalnız vekil ve negatif klasörlerini açar.
+- Hata ayıklama araçları ham kare göstermez. Pencere açan araçlar: oynatıcı (Emirhan'ın kendi videoları, bulanıklık açık) ve `tools/label_events` (pozitif klasörde yalnız `--ortak` bayrağıyla açılır).
+- `safety.write_dataset_frame` ham kareyi yalnız kilitli `data/pozitif/` altına yazar (klasör 700, Spotlight kapalı).
+- `tools/before_after` (tanıtım klibi) pozitif klasörden video kabul etmez.
+
+## 2b. Araçlar ve hangi hipotezi ölçtükleri
+
+| Araç | Hipotez | Çıktı |
+|---|---|---|
+| `tools/bench` | H-03 | ms/kare, realtime_factor (sentetik kareler) |
+| `tools/evaluate` | H-01, H-02 (görüntü) | yakalama, kapsama, yanlış alarm oranı |
+| `tools/label_events` | (ortak) | `data/etiket/*.json`, yalnız zaman |
+| `tools/eval_video` | H-01, H-05, H-06 (video) | olay yakalama, kare kapsama, geç başlama, olay dışı bulanıklık |
+| `tools/before_after` | H-04 (vekil/negatif) | önce/sonra klibi |
 
 ## 3. Hipotezler
 
