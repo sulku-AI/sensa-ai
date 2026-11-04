@@ -138,20 +138,35 @@ def train(args: argparse.Namespace) -> None:
         "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
     )
     model = RFDETRSegNano()
-    model.train(
-        dataset_dir=str(OUT),
-        output_dir=str(args.out),
-        epochs=args.epochs,
-        batch_size=args.batch,
-        grad_accum_steps=args.accum,
-        lr=args.lr,
-        device=device,
-        amp=device == "cuda",
-        num_workers=2,
-        early_stopping=True,
-        notes={"proje": "sensa-ai", "veri": "docs/MODEL_ARASTIRMA.md §5"},
-        **({"resume": str(args.resume)} if args.resume else {}),
-    )
+    kw: dict = {
+        "dataset_dir": str(OUT),
+        "output_dir": str(args.out),
+        "epochs": args.epochs,
+        "batch_size": args.batch,
+        "grad_accum_steps": args.accum,
+        "lr": args.lr,
+        "num_workers": 2,
+        "early_stopping": True,
+        "notes": {"proje": "sensa-ai", "veri": "docs/MODEL_ARASTIRMA.md §5"},
+    }
+    if args.resume:
+        kw["resume"] = str(args.resume)
+    kw.update(version_kwargs(getattr(model, "_train_config_class", None), device))
+    model.train(**kw)
+
+
+def version_kwargs(config_class: object, device: str) -> dict:
+    """rfdetr sürüm farkı: yeni sürüm (Lightning) `device`/`amp` yerine `accelerator` alır.
+
+    Güvenlik (D-001): sürüm destekliyorsa veri seti ızgara görüntüleri diske yazılmaz.
+    """
+    fields = getattr(config_class, "model_fields", None)
+    if not fields or "device" in fields:
+        return {"device": device, "amp": device == "cuda"}
+    out: dict = {"accelerator": {"cuda": "gpu"}.get(device, device)}
+    if "save_dataset_grids" in fields:
+        out["save_dataset_grids"] = False
+    return out
 
 
 def main() -> None:

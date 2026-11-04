@@ -64,3 +64,13 @@ def test_seg_detector_returns_polygons() -> None:
     (d,) = det(np.zeros((40, 80, 3), np.uint8), ["ignored"])
     assert d.box == pytest.approx((0.25, 0.25, 0.75, 0.75))
     assert d.poly and len(d.poly[0]) >= 6
+
+
+def test_rfdetr_version_kwargs() -> None:
+    from tools import train_rfdetr as tr
+
+    class New:
+        model_fields = {"accelerator": 1, "save_dataset_grids": 1, "amp_dtype": 1}
+
+    assert tr.version_kwargs(New, "cuda") == {"accelerator": "gpu", "save_dataset_grids": False}
+    assert tr.version_kwargs(None, "mps") == {"device": "mps", "amp": False}

@@ -161,7 +161,11 @@ class SegDetector:
 
         d = dev.pick(device)
         thr = float(config.load()["detect"]["box_threshold"])
-        return cls(RFDETRSegNano(pretrain_weights=path, device=d), d, thr, Path(path).name)
+        try:
+            model = RFDETRSegNano(pretrain_weights=path, device=d)
+        except (TypeError, ValueError):  # yeni rfdetr: cihaz alanı yok, kendisi seçer
+            model = RFDETRSegNano(pretrain_weights=path)
+        return cls(model, d, thr, Path(path).name)
 
     def __call__(self, frame_bgr: np.ndarray, prompts: list[str]) -> list[Detection]:
         from .detect import _component_poly
