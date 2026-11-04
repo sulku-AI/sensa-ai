@@ -108,6 +108,7 @@ class AvAudioClock:
         self._paused = True
         self._gen = 0
         self._thread: threading.Thread | None = None
+        self._eof_at: tuple[float, float] | None = None
 
     def _cb(self, outdata: np.ndarray, frames: int, _time: Any, _status: Any) -> None:
         outdata[:] = 0 if self._paused else self.buf.pull(frames)
@@ -134,6 +135,7 @@ class AvAudioClock:
 
     def start(self, t: float) -> None:
         self._gen += 1
+        self._eof_at = None
         self.buf.reset(t)
         self._thread = threading.Thread(target=self._decode, args=(self._gen, t), daemon=True)
         self._thread.start()
@@ -145,7 +147,15 @@ class AvAudioClock:
         self._paused = True
 
     def now(self) -> float:
-        return self.buf.now()
+        t = self.buf.now()
+        if self._paused:
+            return t
+        if self.buf.eof and self.buf.buffered == 0:  # ses bitti, görüntü sürüyor: duvar saatiyle devam
+            if self._eof_at is None:
+                self._eof_at = (t, time.perf_counter())
+            return self._eof_at[0] + time.perf_counter() - self._eof_at[1]
+        self._eof_at = None
+        return t
 
     def close(self) -> None:
         self._gen += 1
@@ -153,7 +163,20 @@ class AvAudioClock:
         self.stream.close()
 
 
+def has_audio(video: Path) -> bool:
+    try:
+        import av
+
+        with av.open(str(video)) as c:
+            return bool(c.streams.audio)
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def make_clock(video: Path) -> Clock:
+    """Ses varsa ses ana saat, yoksa duvar saati (sessiz video saati hiç ilerletmez)."""
+    if not has_audio(video):
+        return WallClock()
     try:
         return AvAudioClock(video)
     except Exception:  # noqa: BLE001  (av/sounddevice/aygıt yok)

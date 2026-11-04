@@ -76,3 +76,10 @@ def test_av_clock_decodes_with_fake_device(tmp_path, monkeypatch) -> None:  # ty
     assert np.abs(out).max() > 0.05  # ses var
     assert c.now() == pytest.approx(1.5, abs=0.01)
     c.close()
+
+
+def test_silent_video_uses_wall_clock(proxy_video) -> None:  # type: ignore[no-untyped-def]
+    """Sessiz videoda ses saati ilerlemezdi (oynatıcı 0-0.5 sn arasında dönüyordu)."""
+    from sensa_ai.audio import WallClock, make_clock
+
+    assert isinstance(make_clock(proxy_video), WallClock)

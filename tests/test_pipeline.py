@@ -166,3 +166,19 @@ def test_tracking_runs_at_track_fps() -> None:
     process_chunk(frames, 0.0, 25.0, StubDet(), ["x"], StubTracker(), tracks, 1.0, track_fps=5.0)  # type: ignore[arg-type]
     assert StubTracker.seen == 3
     assert [round(k.t, 2) for k in tracks[0].keyframes] == [0.0, 0.2, 0.4]
+
+
+def test_proxy_detector_gives_shape_polygon() -> None:
+    """Vekil dedektör kutu değil şekil verir: daire poligonunun alanı kutudan belirgin küçük."""
+    import cv2
+
+    from sensa_ai.blur import region_mask
+    from sensa_ai.blurtrack import Region
+
+    f = np.zeros((200, 200, 3), np.uint8)
+    cv2.circle(f, (100, 100), 50, (30, 30, 210), -1)
+    (d,) = ColorProxyDetector()(f, ["red balloon"])
+    assert d.poly and len(d.poly[0]) >= 12
+    poly_area = region_mask((200, 200), [Region(d.box, 1.0, d.poly)], 0, 0).sum()
+    box_area = region_mask((200, 200), [Region(d.box, 1.0)], 0, 0).sum()
+    assert poly_area < 0.85 * box_area  # daire / kare = 0.785

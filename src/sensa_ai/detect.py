@@ -42,11 +42,25 @@ class ColorProxyDetector:
         lo = cv2.inRange(hsv, (0, 150, 70), (10, 255, 255))
         hi = cv2.inRange(hsv, (170, 150, 70), (180, 255, 255))
         mask = cv2.bitwise_or(lo, hi)
-        n, _, stats, _ = cv2.connectedComponentsWithStats(mask)
+        n, labels, stats, _ = cv2.connectedComponentsWithStats(mask)
         h, w = mask.shape
         out: list[Detection] = []
         for i in range(1, n):
             x, y, bw, bh, area = stats[i]
             if area >= self.min_area_frac * h * w:
-                out.append(Detection("proxy", (x / w, y / h, (x + bw) / w, (y + bh) / h), 1.0))
+                box = (x / w, y / h, (x + bw) / w, (y + bh) / h)
+                out.append(Detection("proxy", box, 1.0, _component_poly(labels == i, w, h)))
         return out
+
+
+def _component_poly(comp: np.ndarray, w: int, h: int) -> list[list[float]] | None:
+    """Bileşenin dış sınırı, sadeleştirilmiş normalize poligon (bulanıklık kutu değil şekli izlesin)."""
+    import cv2
+
+    cs, _ = cv2.findContours(comp.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    polys = []
+    for c in cs:
+        a = cv2.approxPolyDP(c, 0.01 * cv2.arcLength(c, True), True).reshape(-1, 2)
+        if len(a) >= 3:
+            polys.append([float(v) for x, y in a for v in (x / w, y / h)])
+    return polys or None

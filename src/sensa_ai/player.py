@@ -175,6 +175,8 @@ def play(
         if analyzer:
             analyzer.set_playhead(pos)
         cap.set(cv2.CAP_PROP_POS_MSEC, pos * 1000) if abs(cap.get(cv2.CAP_PROP_POS_MSEC) / 1000 - pos) > 0.5 else None
+        while cap.get(cv2.CAP_PROP_POS_MSEC) / 1000 < pos - 1.5 / fps and cap.grab():
+            pass  # saat ilerideyse geciken kareleri atla
         ok, frame = cap.read()
         if not ok:
             break
