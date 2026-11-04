@@ -58,7 +58,9 @@ src/sensa_ai/
   audio.py                ses ana saat (PyAV + sounddevice)
   player.py               canlı oynatıcı: analiz iş parçacığı + bulanıklık
 tools/                    bench, evaluate, autolabel, fetch_datasets, fetch_negatives,
-                          train_rfdetr, make_proxy_video, eval_video, before_after
+                          train_rfdetr, make_proxy_video, eval_video, before_after,
+                          label_events, web_player
+web/                      tarayıcı oynatıcısı: blurtrack.js (iz mantığı, eklenti çekirdeği) + player.html
 tests/                    sentetik, kansız testler (model testleri rastgele ağırlıkla, indirmesiz)
 data/                     yerel veri (repoya girmez), bkz. data/README.md
 experiments/results/      tarihli deney sonuçları

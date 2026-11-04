@@ -42,6 +42,17 @@ Hassasiyet profili: `--profile hafif`, `orta` (varsayılan) ya da `guclu` (daha 
 
 Kendi çektiğin kırmızı balon / kırmızı top videosu da olur. Bakılacak: bulanıklık bölge görünmeden önce başlıyor mu, kenarlar yumuşak mı, ileri sarınca "analiz yetişiyor" bulanıklığı makul sürede kalkıyor mu (H-04).
 
+## 3b. Tarayıcı oynatıcısı (sen izleyebilirsin)
+
+```bash
+python -m tools.make_proxy_video data/vekil/balon.webm      # Chrome mp4v çalmaz; .webm VP8 yazar
+python -m sensa_ai.pipeline analyze data/vekil/balon.webm --proxy
+python -m tools.web_player data/vekil/balon.webm            # tarayıcı açılır: http://127.0.0.1:8765/
+python -m tools.web_player --profile guclu                  # dosyaları sayfada seç
+```
+
+Sayfa yalnız bulanıklaştırılmış tuvali gösterir; iz yüklenmeden ekran siyahtır. Boşluk tuşu oynat/duraklat.
+
 ## 4. Negatif set (H-02, sen izleyebilirsin)
 
 ```bash

@@ -23,6 +23,7 @@ Metin özetleri **nötr şablonla** yazılır, betimleme yok: `klip 07 · 00:41-
 - Hata ayıklama araçları ham kare göstermez. Pencere açan araçlar: oynatıcı (Emirhan'ın kendi videoları, bulanıklık açık) ve `tools/label_events` (pozitif klasörde yalnız `--ortak` bayrağıyla açılır).
 - `safety.write_dataset_frame` ham kareyi yalnız kilitli `data/pozitif/` altına yazar (klasör 700, Spotlight kapalı).
 - `tools/before_after` (tanıtım klibi) pozitif klasörden video kabul etmez.
+- Tarayıcı oynatıcısında ham `<video>` görünmez (opaklık 0); iz yüklenmeden tuval siyah. `tests/test_web.py` gerçek tarayıcıda (Playwright varsa) bölge içinin bulanık, dışının keskin olduğunu sentetik dama deseniyle ölçer.
 
 ## 2b. Araçlar ve hangi hipotezi ölçtükleri
 
@@ -33,6 +34,7 @@ Metin özetleri **nötr şablonla** yazılır, betimleme yok: `klip 07 · 00:41-
 | `tools/label_events` | (ortak) | `data/etiket/*.json`, yalnız zaman |
 | `tools/eval_video` | H-01, H-05, H-06 (video) | olay yakalama, kare kapsama, geç başlama, olay dışı bulanıklık |
 | `tools/before_after` | H-04 (vekil/negatif) | önce/sonra klibi |
+| `tools/web_player` | H-04 (tarayıcıda) | yerel tarayıcı oynatıcısı; ham video gizli, yalnız bulanık tuval (D-013) |
 
 ## 3. Hipotezler
 

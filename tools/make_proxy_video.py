@@ -18,7 +18,8 @@ import numpy as np
 
 def make(out: Path, seconds: float = 20.0, fps: int = 25, w: int = 1280, h: int = 720) -> Path:
     out.parent.mkdir(parents=True, exist_ok=True)
-    vw = cv2.VideoWriter(str(out), cv2.VideoWriter.fourcc(*"mp4v"), fps, (w, h))
+    codec = "VP80" if out.suffix.lower() == ".webm" else "mp4v"  # .webm: tarayıcı oynatıcısı için VP8
+    vw = cv2.VideoWriter(str(out), cv2.VideoWriter.fourcc(*codec), fps, (w, h))
     rng = np.random.default_rng(0)
     bg = np.zeros((h, w, 3), np.uint8)
     bg[:] = (70, 120, 60)

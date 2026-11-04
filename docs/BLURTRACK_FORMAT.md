@@ -41,6 +41,11 @@ Videodan ayrı, altyazı gibi bir **bulanıklaştırma izi** (D-003). Kendi oyna
 3. Bölge `blur.dilate_px` kadar genişletilir ve `blur.feather_px` ile kenarı yumuşatılır; güç `blur.sigma_px` Gauss bulanıklığıdır. Değerler `config/params.yaml`, profil ile değişebilir.
 4. `analyzed_until_s - t < lookahead.safe_margin_s` ise (ve video sonu analiz edilmediyse) tam kare hafif bulanıklık.
 
+## Başvuru uygulamaları
+
+- Python: `src/sensa_ai/blurtrack.py` (+ `blur.timing`, `blur.region_mask`).
+- JavaScript: `web/blurtrack.js` (DOM'suz, tarayıcı ve Node). `tests/test_web.py` iki uygulamayı aynı izde, 160 zaman noktasında karşılaştırır.
+
 ## Açık konular
 
 - Maskeler için poligon yerine RLE (daha kesin, daha büyük dosya).
