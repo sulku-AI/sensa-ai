@@ -56,6 +56,7 @@ def main() -> None:
     gate = None if args.no_gate else models.SiglipGate.from_pretrained(device=args.device)
     gd = models.GatedDetector(gate, det, prompts["negative"], config.load()["gate"]["threshold"])
     score, t0, n = metrics.Score(), time.perf_counter(), 0
+    neg_seen = neg_gate_pass = 0
 
     for folder in args.pos:
         for i, (path, polys) in enumerate(iter_coco(folder)):
@@ -76,12 +77,16 @@ def main() -> None:
             if img is None:
                 continue
             boxes = [d.box for d in gd(img, prompts["positive"])]
+            neg_seen += 1
+            neg_gate_pass += gate is None or (gd.last_gate_score or 0.0) >= gd.threshold
             score.add_negative(metrics.boxes_to_mask(img.shape[:2], boxes, dilate))
             if args.previews and boxes:
                 safety.write_preview(ROOT / "previews" / "negatif" / f"{path.stem}.png", img)
             n += 1
 
     out = score.summary()
+    if neg_seen:
+        out["negatif_kapi_gecis_orani"] = neg_gate_pass / neg_seen  # tools.bench --gate-pass için (H-03)
     out["saniye_goruntu_basi"] = (time.perf_counter() - t0) / max(n, 1)
     out["dedektor"] = det.model.name_or_path
     out["kapi"] = "yok" if gate is None else gate.model.name_or_path
