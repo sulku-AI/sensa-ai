@@ -44,7 +44,7 @@ Metin özetleri **nötr şablonla** yazılır, betimleme yok: `klip 07 · 00:41-
 |---|---|---|---|---|
 | H-01 | Metin istemli modeller kanlı bölgeleri yakalar | Pozitif sette olay bazında yakalama ve kapsama; etiket = ortağın zaman aralıkları | `requirements.event_recall`, `frame_coverage` | Model + ortak |
 | H-02 | Kansız kırmızı şeylerde az yanlış alarm | Negatif sette dakikada yanlış bulanıklık | `requirements.false_alarm_per_min` | **Emirhan izleyebilir** |
-| H-03 | Dizüstü ekran kartında gerçek zamandan hızlı | Analiz süresi / video süresi, tampon hiç `safe_margin_s` altına inmiyor | `requirements.realtime_factor` | Sayı |
+| H-03 (KISMEN, 2026-11-04: M5'te 1.95, sentetik kare, kapı oranı varsayım; `experiments/results/2026-11-04_bench_mps_edgetam_owlv2.md`) | Dizüstü ekran kartında gerçek zamandan hızlı | Analiz süresi / video süresi, tampon hiç `safe_margin_s` altına inmiyor | `requirements.realtime_factor` | Sayı |
 | H-04 | Bulanıklık izlemeyi bozmuyor | Vekil ve negatif klipler; bulanıklık doğal mı, rampa yeterince önce mi | Emirhan + ortak "rahatsız etmiyor" der | **Emirhan izleyebilir** |
 | H-05 | Karanlık sahnede de çalışır | Pozitif setin karanlık alt kümesi | H-01 ölçütü karanlıkta da | Model + ortak |
 | H-06 | Bölgeler bulanıklıktan sızmıyor (kenar, hızlı hareket) | Ortak bulanık çıktıyı izler, sızan kareyi zaman damgasıyla yazar | 0 sızan olay | Ortak |
