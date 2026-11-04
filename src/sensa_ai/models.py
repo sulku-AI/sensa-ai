@@ -68,7 +68,7 @@ class SiglipGate:
 
         d = dev.pick(device)
         mid = model_id or resolve("gate")
-        model = AutoModel.from_pretrained(mid, torch_dtype=dev.dtype_for(d)).to(d).eval()
+        model = AutoModel.from_pretrained(mid, dtype=dev.dtype_for(d)).to(d).eval()
         return cls(model, AutoProcessor.from_pretrained(mid), d)
 
     def score(self, frame_bgr: np.ndarray, positive: list[str], negative: list[str]) -> float:
