@@ -27,8 +27,18 @@ class Tracker:
 
         d = dev.pick(device)
         mid = model_id or resolve("track")
-        model = AutoModel.from_pretrained(mid).to(d).eval()
-        return cls(model, Sam2VideoProcessor.from_pretrained(mid), d, mid)
+        try:
+            model = AutoModel.from_pretrained(mid).to(d).eval()
+            proc = Sam2VideoProcessor.from_pretrained(mid)
+        except (OSError, ValueError) as e:
+            fallback = resolve("track", "sam2_tiny")
+            if model_id is not None or mid == fallback:
+                raise
+            print(f"[tracking] {mid} yüklenemedi ({type(e).__name__}); yedek {fallback} kullanılıyor")
+            mid = fallback
+            model = AutoModel.from_pretrained(mid).to(d).eval()
+            proc = Sam2VideoProcessor.from_pretrained(mid)
+        return cls(model, proc, d, mid)
 
     def track(self, frames_bgr: list[np.ndarray], boxes: list[Box], start_idx: int = 0) -> list[np.ndarray]:
         """`start_idx` karesindeki normalize kutulardan başlayıp ileri yayar.

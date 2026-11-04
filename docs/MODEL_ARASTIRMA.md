@@ -8,7 +8,7 @@ Amaç: kanlı bölgeleri **kimse görüntü görmeden** bulup takip edebilecek a
 |---|---|---|---|
 | Kare kapısı | SigLIP (base) | CLIP ViT-B/32 | Ucuz, sıfır atış, pozitif ve negatif istemleri aynı anda karşılaştırır |
 | Metinle bölge | **LLMDet tiny/base** | OWLv2 base, Grounding DINO tiny | LLMDet: Apache 2.0, transformers'ta, MM-Grounding-DINO ile aynı arayüz, LVIS'te GD'den güçlü [3] |
-| Maske takibi | **EdgeTAM** (M5) | SAM 2.1 tiny (2060) | İkisi de Apache 2.0. EdgeTAM SAM 2'nin cihaz üstü hafif sürümü [6]; transformers kimliği `yonigozlan/edgetam-video-1` [14] |
+| Maske takibi | **EdgeTAM** (M5) | SAM 2.1 tiny (2060) | İkisi de Apache 2.0. EdgeTAM SAM 2'nin cihaz üstü hafif sürümü [6]; transformers kimliği `facebook/EdgeTAM` [14] (`yonigozlan/edgetam-video-1` M5'te 401 verdi, 2026-11-04; FA kaydı) |
 | Damıtma (hızlı model) | **RF-DETR-Seg Nano/Small** | — | Apache 2.0 bütün segmentasyon boyutlarında [4]; YOLOv8-seg (AGPL) yerine |
 | Öğretmen (yalnız çevrimdışı) | SAM 3 | — | Metinle maske + takip tek modelde [5], ama lisansı açık kaynak değil ve 6 GB'a sığmaz (aşağıda) |
 

@@ -13,7 +13,7 @@ detect:
 track:
   sam2_tiny: facebook/sam2.1-hiera-tiny             # 1. tercih (2060)
   sam2_small: facebook/sam2.1-hiera-small
-  edgetam: yonigozlan/edgetam-video-1               # M5 ana hedef; transformers belgesindeki kimlik
+  edgetam: facebook/EdgeTAM                        # M5 ana hedef; transformers EdgeTamVideoConfig belgesindeki kimlik
 
 default:
   gate: siglip
