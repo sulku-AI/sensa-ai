@@ -47,16 +47,21 @@ def main() -> None:
     ap.add_argument("--no-gate", action="store_true")
     ap.add_argument("--device", default=None)
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--box-threshold", type=float, default=None, help="detect.box_threshold yerine (deneme)")
+    ap.add_argument("--gate-threshold", type=float, default=None, help="gate.threshold yerine (deneme)")
     ap.add_argument("--previews", action="store_true", help="yalnız negatifler için güvenli küçük resim")
     args = ap.parse_args()
 
     prompts = config.load_prompts()
     dilate = int(config.load()["blur"]["dilate_px"])
     det = models.TextDetector.from_pretrained(models.resolve("detect", args.detector), device=args.device)
+    if args.box_threshold is not None:
+        det.box_threshold = det.text_threshold = args.box_threshold
     gate = None if args.no_gate else models.SiglipGate.from_pretrained(device=args.device)
-    gd = models.GatedDetector(gate, det, prompts["negative"], config.load()["gate"]["threshold"])
+    gthr = args.gate_threshold if args.gate_threshold is not None else config.load()["gate"]["threshold"]
+    gd = models.GatedDetector(gate, det, prompts["negative"], gthr)
     score, t0, n = metrics.Score(), time.perf_counter(), 0
-    neg_seen = neg_gate_pass = 0
+    neg_seen = neg_gate_pass = pos_seen = pos_gate_pass = 0
 
     for folder in args.pos:
         for i, (path, polys) in enumerate(iter_coco(folder)):
@@ -66,6 +71,8 @@ def main() -> None:
             if img is None or not polys:
                 continue
             boxes = [d.box for d in gd(img, prompts["positive"])]
+            pos_seen += 1
+            pos_gate_pass += gate is None or (gd.last_gate_score or 0.0) >= gd.threshold
             score.add_positive(
                 metrics.polygons_to_mask(img.shape[:2], polys), metrics.boxes_to_mask(img.shape[:2], boxes, dilate)
             )
@@ -87,6 +94,10 @@ def main() -> None:
                 print(f"  {n} görüntü, {time.perf_counter() - t0:.0f} sn", flush=True)
 
     out = score.summary()
+    if pos_seen:
+        out["pozitif_kapi_gecis_orani"] = pos_gate_pass / pos_seen  # düşükse kaçırmanın sebebi kapı
+    out["kutu_esigi"] = det.box_threshold
+    out["kapi_esigi"] = gd.threshold if gate is not None else "yok"
     if neg_seen:
         out["negatif_kapi_gecis_orani"] = neg_gate_pass / neg_seen  # tools.bench --gate-pass için (H-03)
     out["saniye_goruntu_basi"] = (time.perf_counter() - t0) / max(n, 1)
