@@ -17,8 +17,10 @@ import time
 from pathlib import Path
 
 import cv2
+import numpy as np
 
 from sensa_ai import config, metrics, models, safety
+from sensa_ai.detect import Detection
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "experiments" / "results"
@@ -39,22 +41,46 @@ def iter_coco(folder: Path):  # type: ignore[no-untyped-def]
             yield ann_path.parent / img["file_name"], by_img.get(img["id"], [])
 
 
+def pred_mask(shape: tuple[int, int], dets: list[Detection], dilate: int) -> np.ndarray:
+    """Poligonu olan tespit (segmentasyon modeli) şekliyle, olmayan kutuyla maskeye girer."""
+    h, w = shape
+    m = metrics.boxes_to_mask(shape, [d.box for d in dets if not d.poly], dilate)
+    polys = [[v * (w if i % 2 == 0 else h) for i, v in enumerate(p)] for d in dets if d.poly for p in d.poly]
+    if polys:
+        pm = metrics.polygons_to_mask(shape, polys)
+        if dilate > 0:
+            pm = cv2.dilate(pm.astype(np.uint8), np.ones((2 * dilate + 1,) * 2, np.uint8)).astype(bool)
+        m |= pm
+    return m
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--pos", type=Path, action="append", default=[])
     ap.add_argument("--neg", type=Path, action="append", default=[])
-    ap.add_argument("--detector", default=None, help="config/models.yaml detect anahtarı ya da HF kimliği")
+    ap.add_argument(
+        "--detector",
+        default=None,
+        help="models.yaml anahtarı, HF kimliği ya da rfdetr:<.pth>",
+    )
     ap.add_argument("--no-gate", action="store_true")
     ap.add_argument("--device", default=None)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--box-threshold", type=float, default=None, help="detect.box_threshold yerine (deneme)")
     ap.add_argument("--gate-threshold", type=float, default=None, help="gate.threshold yerine (deneme)")
+    ap.add_argument(
+        "--empty-as-neg", action="store_true", help="--pos içindeki etiketsiz görüntüleri negatif say (egitim/test)"
+    )
     ap.add_argument("--previews", action="store_true", help="yalnız negatifler için güvenli küçük resim")
     args = ap.parse_args()
 
     prompts = config.load_prompts()
     dilate = int(config.load()["blur"]["dilate_px"])
-    det = models.TextDetector.from_pretrained(models.resolve("detect", args.detector), device=args.device)
+    det: models.TextDetector | models.SegDetector
+    if args.detector and args.detector.startswith("rfdetr:"):
+        det = models.SegDetector.from_checkpoint(args.detector.removeprefix("rfdetr:"), device=args.device)
+    else:
+        det = models.TextDetector.from_pretrained(models.resolve("detect", args.detector), device=args.device)
     if args.box_threshold is not None:
         det.box_threshold = det.text_threshold = args.box_threshold
     gate = None if args.no_gate else models.SiglipGate.from_pretrained(device=args.device)
@@ -67,15 +93,21 @@ def main() -> None:
         for i, (path, polys) in enumerate(iter_coco(folder)):
             if args.limit and i >= args.limit:
                 break
-            img = cv2.imread(str(path))
-            if img is None or not polys:
+            if not polys and not args.empty_as_neg:
                 continue
-            boxes = [d.box for d in gd(img, prompts["positive"])]
+            img = cv2.imread(str(path))
+            if img is None:
+                continue
+            dets = gd(img, prompts["positive"])
+            if not polys:  # etiketsiz görüntü (train_rfdetr negatifleri): kansız sayılır
+                neg_seen += 1
+                neg_gate_pass += gate is None or (gd.last_gate_score or 0.0) >= gd.threshold
+                score.add_negative(pred_mask(img.shape[:2], dets, dilate))
+                n += 1
+                continue
             pos_seen += 1
             pos_gate_pass += gate is None or (gd.last_gate_score or 0.0) >= gd.threshold
-            score.add_positive(
-                metrics.polygons_to_mask(img.shape[:2], polys), metrics.boxes_to_mask(img.shape[:2], boxes, dilate)
-            )
+            score.add_positive(metrics.polygons_to_mask(img.shape[:2], polys), pred_mask(img.shape[:2], dets, dilate))
             n += 1
     for folder in args.neg:
         files = sorted(p for p in folder.rglob("*") if p.suffix.lower() in {".jpg", ".jpeg", ".png"})
@@ -83,11 +115,11 @@ def main() -> None:
             img = cv2.imread(str(path))
             if img is None:
                 continue
-            boxes = [d.box for d in gd(img, prompts["positive"])]
+            dets = gd(img, prompts["positive"])
             neg_seen += 1
             neg_gate_pass += gate is None or (gd.last_gate_score or 0.0) >= gd.threshold
-            score.add_negative(metrics.boxes_to_mask(img.shape[:2], boxes, dilate))
-            if args.previews and boxes:
+            score.add_negative(pred_mask(img.shape[:2], dets, dilate))
+            if args.previews and dets:
                 safety.write_preview(ROOT / "previews" / "negatif" / f"{path.stem}.png", img)
             n += 1
             if n % 25 == 0:
@@ -101,7 +133,7 @@ def main() -> None:
     if neg_seen:
         out["negatif_kapi_gecis_orani"] = neg_gate_pass / neg_seen  # tools.bench --gate-pass için (H-03)
     out["saniye_goruntu_basi"] = (time.perf_counter() - t0) / max(n, 1)
-    out["dedektor"] = det.model.name_or_path
+    out["dedektor"] = det.name if isinstance(det, models.SegDetector) else det.model.name_or_path
     out["kapi"] = "yok" if gate is None else gate.model.name_or_path
     out["cihaz"] = det.device
     RESULTS.mkdir(parents=True, exist_ok=True)

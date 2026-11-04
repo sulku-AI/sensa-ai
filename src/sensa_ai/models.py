@@ -145,10 +145,49 @@ class TextDetector:
         ]
 
 
+class SegDetector:
+    """Eğitilmiş RF-DETR-Seg kontrol noktası (tools/train_rfdetr). İstemleri yok sayar: tek sınıf "blood".
+
+    `TextDetector` ile aynı arayüz; maskeden poligon da verir (bulanıklık şekli izler).
+    """
+
+    def __init__(self, model: Any, device: str, box_threshold: float, name: str) -> None:
+        self.model, self.device, self.box_threshold, self.name = model, device, box_threshold, name
+        self.text_threshold = box_threshold
+
+    @classmethod
+    def from_checkpoint(cls, path: str, device: str | None = None) -> SegDetector:
+        from rfdetr import RFDETRSegNano
+
+        d = dev.pick(device)
+        thr = float(config.load()["detect"]["box_threshold"])
+        return cls(RFDETRSegNano(pretrain_weights=path, device=d), d, thr, Path(path).name)
+
+    def __call__(self, frame_bgr: np.ndarray, prompts: list[str]) -> list[Detection]:
+        from .detect import _component_poly
+
+        h, w = frame_bgr.shape[:2]
+        res = self.model.predict(_to_pil(frame_bgr), threshold=self.box_threshold)
+        max_n = int(config.load()["detect"]["max_regions"])
+        order = np.argsort(-np.asarray(res.confidence))[:max_n]
+        masks = getattr(res, "mask", None)
+        return [
+            Detection(
+                "blood",
+                _clip_box(res.xyxy[i], w, h),
+                float(res.confidence[i]),
+                _component_poly(masks[i], w, h) if masks is not None else None,
+            )
+            for i in order.tolist()
+        ]
+
+
 class GatedDetector:
     """A + B: kapı geçen karede dedektörü çalıştırır. `Detector` arayüzünü uygular."""
 
-    def __init__(self, gate: SiglipGate | None, detector: TextDetector, negative: list[str], threshold: float) -> None:
+    def __init__(
+        self, gate: SiglipGate | None, detector: TextDetector | SegDetector, negative: list[str], threshold: float
+    ) -> None:
         self.gate, self.detector, self.negative, self.threshold = gate, detector, negative, threshold
         self.last_gate_score: float | None = None
 

@@ -23,3 +23,15 @@ Sıradaki: kapı mı dedektör mü kaçırıyor (`--no-gate`, `pozitif_kapi_geci
 | kapı 0.15, kutu 0.10 | 0.750 | 0.735 | 0.260 | 0.990 |
 
 Sonuç: kaçırmanın sebebi **kapı değil** (pozitiflerin %99'u geçiyor), **dedektörün kutu eşiği**. OWLv2 puanları düşük; 0.25 çok yüksek. 0.10'da yakalama 0.33 → 0.75 (Sensors 2025 denetimli tabanı 0.655'i geçti), bedeli fazla bulanıklık 0.08 → 0.26. Sıradaki: negatif sette 0.10 eşiğin yanlış alarmı, 0.05 denemesi, sonra denetimli eğitim.
+
+## Karışık set ve eşik bedeli (Colab T4, 2026-11-04)
+
+447 pozitif (`blood_seg_joost` 200 + `blood_pure_blur` ilk 300'den etiketlisi; klasör başına `--limit 300`), 300 negatif (COCO), kapı 0.30. `blood_pure_blur` dışa aktarımı 33546 görüntü / 33811 bölge (Universe'te 3229 özgün görüntü: set artırılmış).
+
+| kutu eşiği | yakalama | kapsama | fazla bulanıklık | negatif yanlış alarm | negatif bulanık alan | pozitif kapı | negatif kapı |
+|---|---|---|---|---|---|---|---|
+| 0.25 (önceki ölçüm, yalnız negatif) | — | — | — | 0.003 | — | — | 0.462 |
+| 0.10 | 0.365 | 0.356 | 0.125 | 0.150 | 0.064 | 0.987 | 0.450 |
+| 0.05 | 0.508 | 0.502 | 0.198 | 0.310 | 0.124 | 0.987 | 0.450 |
+
+Sonuç: `blood_pure_blur` OWLv2 için çok daha zor (joost'ta 0.10 eşikte 0.75, karışıkta 0.365). Eşiği düşürmek yakalamayı ancak 0.51'e çıkarıyor, bedeli kansız görüntülerin %31'inde yanlış bulanıklık. Sıfır atışla 0.95'e eşik ayarıyla ulaşılamaz; varsayılan kutu eşiği 0.25 kalır. H-01 sıfır atış için **ÇÜRÜTÜLDÜ** (kesin). Sıradaki: denetimli RF-DETR-Seg Nano (`tools.train_rfdetr`, sızıntısız grup bölünmesi), ölçüm yalnız ayrılmış `egitim/test` üzerinde (`--empty-as-neg`).
