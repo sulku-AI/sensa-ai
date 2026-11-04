@@ -16,3 +16,9 @@ Her kayıt: yaklaşım, neden umut vericiydi, neden bırakıldı, ders.
 - **Ne oldu:** M5'te `tools.bench` 401 / RepositoryNotFound verdi.
 - **Düzeltme:** `facebook/EdgeTAM` ana dalı da olmadı (yalnız orijinal `edgetam.pt`, OSError). transformers ağırlıkları açık HF PR #1'de: `revision="refs/pr/1"` (models.yaml'da `facebook/EdgeTAM@refs/pr/1`). `Tracker.from_pretrained` varsayılan yüklenemezse SAM 2.1 tiny'ye düşer ve bunu yazar.
 - **Ders:** Model kimliklerini kurulu kütüphanenin belgesinden al; ilk gerçek çalıştırma doğrulamadır.
+
+## FA-03: Hareket payı + yalnız dışa yumuşatma (2026-11-04)
+
+- **Yaklaşım:** Sızmayı (H-06) azaltmak için bölgeyi iki anahtar kare arası kaymanın yarısı kadar genişletmek ve kenar yumuşatmasını yalnız dışa uygulamak.
+- **Ne oldu:** Emirhan vekil videoda izledi: "çok fazla yere gereksiz blur atıyor", önceki hal daha iyiydi. Önceki halde yalnız birkaç piksellik, rahatsız etmeyen sızma vardı.
+- **Karar:** Geri alındı (kullanıcı). Sızma ayarı gerçek (pozitif) görüntülerde, ortağın H-06 kontrolüyle yeniden ele alınacak; o zaman pay sabit değil daha küçük (ör. kaymanın %10-20'si) denenebilir.
