@@ -18,6 +18,7 @@ class Detection:
     label: str
     box: Box  # normalize
     score: float
+    poly: list[list[float]] | None = None  # takip maskesinden, normalize
 
 
 class Detector(Protocol):

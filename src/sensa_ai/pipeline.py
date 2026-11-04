@@ -9,6 +9,8 @@ Not: render şimdilik sesi kopyalamaz (OpenCV). Ses ffmpeg ile M1 içinde eklene
 from __future__ import annotations
 
 import argparse
+import shutil
+import subprocess
 from pathlib import Path
 
 import cv2
@@ -17,7 +19,7 @@ import numpy as np
 from . import blur, config
 from .blurtrack import BlurTrack, Box, Keyframe, Track
 from .detect import ColorProxyDetector, Detection, Detector
-from .tracking import Tracker, mask_to_box
+from .tracking import Tracker, mask_to_box, mask_to_polys
 
 
 def iou(a: Box, b: Box) -> float:
@@ -31,15 +33,15 @@ def iou(a: Box, b: Box) -> float:
 def associate(tracks: list[Track], t: float, dets: list[Detection], max_gap_s: float, min_iou: float = 0.1) -> None:
     """Açgözlü eşleme: her tespit en çok örtüşen açık ize eklenir, yoksa yeni iz açar.
 
-    SAM 2 gelince (M1) bu basit kutu takibinin yerini maske yayılımı alır.
+    Takip açıkken tespitler zaten kare kare maskeden gelir; eşleme yalnız onları izlere bağlar.
     """
     open_tracks = [tr for tr in tracks if t - tr.end <= max_gap_s]
     for d in dets:
         best = max(open_tracks, key=lambda tr: iou(tr.keyframes[-1].box, d.box), default=None)
         if best is not None and iou(best.keyframes[-1].box, d.box) >= min_iou and best.end < t:
-            best.keyframes.append(Keyframe(t, d.box, d.score))
+            best.keyframes.append(Keyframe(t, d.box, d.score, d.poly))
         else:
-            tr = Track(d.label, [Keyframe(t, d.box, d.score)])
+            tr = Track(d.label, [Keyframe(t, d.box, d.score, d.poly)])
             tracks.append(tr)
             open_tracks.append(tr)
 
@@ -73,7 +75,7 @@ def analyze(video: Path, detector: Detector, prompts: list[str], tracker: Tracke
             per = tracker.track_objects(small, [d.box for d in dets])
             for j, masks in enumerate(per):
                 fdets = [
-                    Detection(d.label, b, d.score)
+                    Detection(d.label, b, d.score, mask_to_polys(m))
                     for d, m in zip(dets, masks, strict=False)
                     if (b := mask_to_box(m)) is not None
                 ]
@@ -92,23 +94,37 @@ def _downscale(frame: np.ndarray, max_side: int = 640) -> np.ndarray:
     return frame if s >= 1 else cv2.resize(frame, (round(w * s), round(h * s)), interpolation=cv2.INTER_AREA)
 
 
-def render(video: Path, bt: BlurTrack, out: Path) -> None:
+def render(video: Path, bt: BlurTrack, out: Path, audio: bool = True) -> None:
+    """Bulanık video yazar. ffmpeg varsa ses kaynaktan kopyalanır ve görüntü H.264'e çevrilir."""
     cfg = config.load()["blur"]
     cap = cv2.VideoCapture(str(video))
     fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
     w, h = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    writer = cv2.VideoWriter(str(out), cv2.VideoWriter.fourcc(*"mp4v"), fps, (w, h))
+    ffmpeg = shutil.which("ffmpeg") if audio else None
+    silent = out.with_name(out.stem + ".sessiz.mp4") if ffmpeg else out
+    writer = cv2.VideoWriter(str(silent), cv2.VideoWriter.fourcc(*"mp4v"), fps, (w, h))
     i = 0
     while True:
         ok, frame = cap.read()
         if not ok:
             break
-        boxes = bt.active(i / fps, cfg["ramp_in_s"], cfg["ramp_out_s"])
-        mask = blur.box_mask((h, w), boxes, int(cfg["dilate_px"]), int(cfg["feather_px"]))
+        regions = bt.active_regions(i / fps, cfg["ramp_in_s"], cfg["ramp_out_s"])
+        mask = blur.region_mask((h, w), regions, int(cfg["dilate_px"]), int(cfg["feather_px"]))
         writer.write(blur.apply(frame, mask, cfg["sigma_px"]))
         i += 1
     cap.release()
     writer.release()
+    if ffmpeg:
+        mux_audio(ffmpeg, silent, video, out)
+        silent.unlink(missing_ok=True)
+
+
+def mux_audio(ffmpeg: str, silent: Path, source: Path, out: Path) -> None:
+    """Bulanık görüntü + kaynağın sesi (varsa). Kaynakta ses yoksa yalnız görüntü."""
+    cmd = [ffmpeg, "-y", "-loglevel", "error", "-i", str(silent), "-i", str(source)]
+    cmd += ["-map", "0:v:0", "-map", "1:a?", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20"]
+    cmd += ["-c:a", "copy", "-shortest", str(out)]
+    subprocess.run(cmd, check=True)  # noqa: S603
 
 
 def main(argv: list[str] | None = None) -> None:

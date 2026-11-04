@@ -97,8 +97,8 @@ class Compositor:
         m = self.mode(t)
         if m is la.Mode.FAILSAFE:
             return blur.apply_full(frame, self.b["failsafe_sigma_px"]), m
-        boxes = self.track.active(t, self.b["ramp_in_s"], self.b["ramp_out_s"])
-        mask = blur.box_mask(frame.shape[:2], boxes, int(self.b["dilate_px"]), int(self.b["feather_px"]))
+        regions = self.track.active_regions(t, self.b["ramp_in_s"], self.b["ramp_out_s"])
+        mask = blur.region_mask(frame.shape[:2], regions, int(self.b["dilate_px"]), int(self.b["feather_px"]))
         return blur.apply(frame, mask, self.b["sigma_px"]), m
 
 

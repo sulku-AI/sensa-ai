@@ -57,6 +57,7 @@ def test_tracker_fills_every_frame(proxy_video: Path) -> None:
     assert len(bt.tracks) == 1
     # 10 fps, örnekleme 2 fps -> takip ile kare başına anahtar kare (2 sn x 10 = ~20)
     assert len(bt.tracks[0].keyframes) >= 18
+    assert all(k.poly for k in bt.tracks[0].keyframes)  # maske -> poligon izde
 
 
 def test_make_proxy_video_and_analyze(tmp_path: Path) -> None:
@@ -67,3 +68,30 @@ def test_make_proxy_video_and_analyze(tmp_path: Path) -> None:
     starts = sorted(tr.start for tr in bt.tracks)
     assert starts and 3.5 <= starts[0] <= 4.5  # balon 4. saniyede
     assert all(tr.end <= 14.5 for tr in bt.tracks)
+
+
+def test_render_keeps_audio(proxy_video: Path, tmp_path: Path) -> None:
+    import shutil
+    import subprocess
+
+    import pytest
+
+    ff = shutil.which("ffmpeg")
+    if not ff:
+        pytest.skip("ffmpeg yok")
+    with_audio = tmp_path / "sesli.mp4"
+    subprocess.run(
+        [ff, "-y", "-loglevel", "error", "-i", str(proxy_video), "-f", "lavfi", "-i", "sine=frequency=440:duration=4"]
+        + ["-c:v", "copy", "-c:a", "aac", "-shortest", str(with_audio)],
+        check=True,
+    )
+    bt = pipeline.analyze(with_audio, ColorProxyDetector(), ["red balloon"])
+    out = tmp_path / "out.mp4"
+    pipeline.render(with_audio, bt, out)
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "stream=codec_type", "-of", "csv=p=0", str(out)],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.split()
+    assert "video" in probe and "audio" in probe

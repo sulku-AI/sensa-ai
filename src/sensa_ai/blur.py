@@ -5,7 +5,7 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-from .blurtrack import Box
+from .blurtrack import Box, Region
 
 
 def box_mask(shape: tuple[int, int], boxes: list[tuple[Box, float]], dilate_px: int, feather_px: int) -> np.ndarray:
@@ -18,6 +18,32 @@ def box_mask(shape: tuple[int, int], boxes: list[tuple[Box, float]], dilate_px: 
         layer = np.zeros_like(mask)
         cv2.rectangle(layer, a, b, float(np.clip(strength, 0.0, 1.0)), thickness=-1)
         mask = np.maximum(mask, layer).astype(np.float32)
+    if feather_px > 0 and mask.any():
+        k = feather_px * 2 + 1
+        mask = cv2.GaussianBlur(mask, (k, k), feather_px / 2)
+    return mask
+
+
+def region_mask(shape: tuple[int, int], regions: list[Region], dilate_px: int, feather_px: int) -> np.ndarray:
+    """Bölgelerden 0..1 maske: poligon varsa şekil, yoksa kutu. Genişletme + yumuşak kenar."""
+    h, w = shape
+    mask = np.zeros((h, w), np.float32)
+    boxes_only: list[tuple[Box, float]] = []
+    for r in regions:
+        if not r.poly:
+            boxes_only.append((r.box, r.strength))
+            continue
+        layer = np.zeros((h, w), np.uint8)
+        pts = [
+            (np.asarray(p, np.float32).reshape(-1, 2) * (w, h)).round().astype(np.int32) for p in r.poly if len(p) >= 6
+        ]
+        cv2.fillPoly(layer, pts, 255)
+        if dilate_px > 0:
+            k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dilate_px * 2 + 1, dilate_px * 2 + 1))
+            layer = cv2.dilate(layer, k)
+        mask = np.maximum(mask, layer.astype(np.float32) / 255 * float(np.clip(r.strength, 0.0, 1.0)))
+    if boxes_only:
+        mask = np.maximum(mask, box_mask(shape, boxes_only, dilate_px, 0))
     if feather_px > 0 and mask.any():
         k = feather_px * 2 + 1
         mask = cv2.GaussianBlur(mask, (k, k), feather_px / 2)

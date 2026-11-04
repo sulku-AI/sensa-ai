@@ -29,3 +29,14 @@ def test_roundtrip(tmp_path: Path) -> None:
     p = tmp_path / "a.blurtrack.json"
     make().save(p)
     assert BlurTrack.load(p) == make()
+
+
+def test_poly_moves_with_box_and_roundtrips(tmp_path: Path) -> None:
+    poly = [[0.0, 0.0, 0.2, 0.0, 0.0, 0.2]]
+    tr = Track("blood", [Keyframe(1.0, (0.0, 0.0, 0.2, 0.2), 1.0, poly), Keyframe(2.0, (0.2, 0.0, 0.4, 0.2))])
+    bt = BlurTrack("a.mp4", 10.0, 10.0, [tr])
+    (r,) = bt.active_regions(1.2)
+    assert r.poly is not None and r.poly[0][0] == pytest.approx(0.04)  # kutu 0.04 sağa kaydı
+    p = tmp_path / "a.blurtrack.json"
+    bt.save(p)
+    assert BlurTrack.load(p) == bt

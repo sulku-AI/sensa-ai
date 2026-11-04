@@ -75,6 +75,21 @@ class Tracker:
         return (time.perf_counter() - t0) / len(frames_bgr)
 
 
+def mask_to_polys(mask: np.ndarray, epsilon_frac: float = 0.01, max_polys: int = 4) -> list[list[float]]:
+    """Maskeyi sadeleştirilmiş normalize poligonlara çevirir (en büyük `max_polys` parça)."""
+    import cv2
+
+    h, w = mask.shape
+    contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)[:max_polys]
+    out = []
+    for c in contours:
+        approx = cv2.approxPolyDP(c, epsilon_frac * max(h, w), True).reshape(-1, 2)
+        if len(approx) >= 3:
+            out.append([round(float(v), 4) for xy in approx for v in (xy[0] / w, xy[1] / h)])
+    return out
+
+
 def mask_to_box(mask: np.ndarray) -> Box | None:
     ys, xs = np.nonzero(mask)
     if xs.size == 0:
