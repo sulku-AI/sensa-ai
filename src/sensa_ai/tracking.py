@@ -11,6 +11,7 @@ from typing import Any
 
 import numpy as np
 
+from . import config
 from . import device as dev
 from .blurtrack import Box
 
@@ -111,3 +112,9 @@ def _load(mid: str, d: str) -> tuple[Any, Any]:
     klass = EdgeTamVideoModel if "edgetam" in repo.lower() else Sam2VideoModel
     model = klass.from_pretrained(repo, **kw).to(d).eval()
     return model, Sam2VideoProcessor.from_pretrained(repo, **kw)
+
+
+def maybe_tracker(device: str | None = None, on: bool | None = None) -> Tracker | None:
+    """Maske takibi: `on` None ise params `track.enabled` (D-016: varsayılan kapalı, sık tespit)."""
+    enabled = bool(config.load()["track"].get("enabled", True)) if on is None else on
+    return Tracker.from_pretrained(device=device) if enabled else None

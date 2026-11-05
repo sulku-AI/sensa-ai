@@ -133,3 +133,20 @@ def test_evaluate_end_to_end_with_sources(monkeypatch: pytest.MonkeyPatch, tmp_p
     assert out["yakalama_orani"] == 1.0 and out["negatif_yanlis_alarm_orani"] == 1.0
     assert set(out["kaynaklar"]) == {"a", "b"}
     assert out["yakalama_alt_95"] < 1.0
+
+
+def test_default_falls_back_to_owlv2_and_no_tracker(monkeypatch: pytest.MonkeyPatch) -> None:
+    from sensa_ai import tracking
+
+    calls: list[str | None] = []
+
+    def fake(name: str | None = None, device: str | None = None) -> object:
+        calls.append(name)
+        if name is None:
+            raise FileNotFoundError("kontrol noktası yok")
+        return object()
+
+    monkeypatch.setattr(models, "make_detector", fake)
+    gd = models.build_default()
+    assert calls == [None, "owlv2_base"] and gd.gate is None  # D-016: kapı varsayılan kapalı
+    assert tracking.maybe_tracker() is None  # D-016: takip varsayılan kapalı

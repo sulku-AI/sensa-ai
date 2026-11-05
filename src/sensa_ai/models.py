@@ -239,8 +239,18 @@ class GatedDetector:
         return self.detector(frame_bgr, prompts)
 
 
-def build_default(device: str | None = None, use_gate: bool = True, detector: str | None = None) -> GatedDetector:
+def build_default(
+    device: str | None = None, use_gate: bool | None = None, detector: str | None = None
+) -> GatedDetector:
+    """Varsayılan hat. `use_gate` None ise params `gate.enabled`. Eğitilmiş model dosyası yoksa OWLv2'ye düşer."""
     prompts = config.load_prompts()
-    gate = SiglipGate.from_pretrained(device=device) if use_gate else None
-    det = make_detector(detector, device=device)
+    try:
+        det = make_detector(detector, device=device)
+    except FileNotFoundError as e:
+        if detector is not None:
+            raise
+        print(f"[models] {e}; OWLv2 kullanılıyor (yavaş: --mask-track ve kapı önerilir)")
+        det = make_detector("owlv2_base", device=device)
+    gate_on = bool(config.load()["gate"].get("enabled", True)) if use_gate is None else use_gate
+    gate = SiglipGate.from_pretrained(device=device) if gate_on else None
     return GatedDetector(gate, det, prompts["negative"], config.load()["gate"]["threshold"])

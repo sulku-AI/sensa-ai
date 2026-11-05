@@ -91,7 +91,9 @@ class Analyzer(threading.Thread):
                         associate(self.track.tracks, k.t, [Detection(tr.label, k.box, k.score, k.poly)], self.max_gap_s)
                 # arama sırasında playhead değiştiyse eski sonucu ileri taşıma
                 if abs(self.track.analyzed_until_s - start) < 1e-6:
-                    self.track.analyzed_until_s = min(self.track.duration_s, t + step)
+                    nxt = t + step
+                    # kayan nokta birikimi (6 x 1/6): sona çok yakınsa sona eşitle, yoksa sonda güvenli mod
+                    self.track.analyzed_until_s = self.track.duration_s if nxt >= self.track.duration_s - 1e-6 else nxt
             self.frames_analyzed += 1
         cap.release()
 
@@ -214,7 +216,8 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--proxy", action="store_true", help="modelsiz vekil dedektör (D-005)")
     ap.add_argument("--track", type=Path, default=None, help="hazır .blurtrack.json (analiz yok)")
     ap.add_argument("--device", default=None)
-    ap.add_argument("--no-track", action="store_true", help="maske takibini kapat (daha hızlı)")
+    ap.add_argument("--no-track", action="store_true", help="maske takibini kapat")
+    ap.add_argument("--mask-track", action="store_true", help="maske takibini aç (OWLv2 ile önerilir)")
     ap.add_argument("--profile", default=None, help="hassasiyet: hafif / orta / guclu (params.yaml)")
     args = ap.parse_args(argv)
     config.set_profile(args.profile)
@@ -225,8 +228,9 @@ def main(argv: list[str] | None = None) -> None:
         play(args.video, ColorProxyDetector(), prompts["proxy"])
     else:
         from . import models
+        from .tracking import maybe_tracker
 
-        tracker = None if args.no_track else Tracker.from_pretrained(device=args.device)
+        tracker = maybe_tracker(args.device, False if args.no_track else True if args.mask_track else None)
         play(args.video, models.build_default(device=args.device), prompts["positive"], tracker=tracker)
 
 

@@ -18,5 +18,5 @@ track:
 
 default:
   gate: siglip
-  detect: owlv2_base               # D-014 (kullanıcı): M5'te 490 ms, SA-Co kıyaslamasında LLMDet'ten iyi
+  detect: rfdetr_seg               # D-016 (kullanıcı): kendi eğitimimiz, M5'te 25 ms; dosya yoksa owlv2_base'e düşer (D-014)
   track: edgetam                  # M5 ana hedef (D-012); 2060 için sam2_tiny

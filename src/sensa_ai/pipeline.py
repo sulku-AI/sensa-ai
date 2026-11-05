@@ -153,7 +153,8 @@ def main(argv: list[str] | None = None) -> None:
     a.add_argument("video", type=Path)
     a.add_argument("--proxy", action="store_true", help="kansız vekil dedektör (D-005)")
     a.add_argument("--prompts", default="positive", choices=["positive", "proxy"], help="gerçek modelde istem seti")
-    a.add_argument("--no-track", action="store_true", help="maske takibini kapat (daha hızlı, daha kaba)")
+    a.add_argument("--no-track", action="store_true", help="maske takibini kapat (params track.enabled'ı ezer)")
+    a.add_argument("--mask-track", action="store_true", help="maske takibini aç (OWLv2 ile önerilir)")
     a.add_argument("--device", default=None)
     a.add_argument("--detector", default=None, help="models.yaml detect adı (ör. rfdetr_seg) ya da .pth yolu")
     a.add_argument("--no-gate", action="store_true", help="SigLIP kapısını kapat (eğitilmiş modelde önerilen)")
@@ -170,10 +171,11 @@ def main(argv: list[str] | None = None) -> None:
             bt = analyze(args.video, ColorProxyDetector(), config.load_prompts()["proxy"])
         else:
             from . import models
+            from .tracking import maybe_tracker
 
-            tracker = None if args.no_track else Tracker.from_pretrained(device=args.device)
+            tracker = maybe_tracker(args.device, False if args.no_track else True if args.mask_track else None)
             # vekil istemle ("red balloon") kapı kapalı: kapının negatifleri kan için ayarlı
-            gate = args.prompts == "positive" and not args.no_gate
+            gate = False if (args.prompts != "positive" or args.no_gate) else None
             det = models.build_default(device=args.device, use_gate=gate, detector=args.detector)
             bt = analyze(args.video, det, config.load_prompts()[args.prompts], tracker)
         out = args.video.with_suffix(".blurtrack.json")

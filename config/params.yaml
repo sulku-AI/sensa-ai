@@ -13,10 +13,11 @@
 lookahead:
   window_s:            {value: 30.0, status: target,   source: "D-002 (kullanıcı): oynatma kafasının 30 sn önü taranır"}
   safe_margin_s:       {value: 5.0,  status: estimate, source: "Tampon bundan kısaysa güvenli mod (D-007)"}
-  sample_fps:          {value: 2.0,  status: estimate, source: "Saniyede 2 kare tespit; aradaki kareler SAM 2 takibiyle dolar"}
+  sample_fps:          {value: 6.0,  status: estimate, source: "D-016 (kullanıcı): eğitilmiş RF-DETR-Seg saniyede 6 kare, takipsiz (M5: 25 ms/kare, hesap rf ≈ 6.7). OWLv2 + takip için 2.0 idi"}
 
 gate:                  # Aşama A: kare başına ucuz eleme (SigLIP sıfır atış)
   threshold:           {value: 0.30, status: estimate, source: "Ayar M2'de negatif setle yapılacak"}
+  enabled:             {value: false, status: estimate, source: "D-016: eğitilmiş model negatiflerle eğitildi, kapıya gerek yok. OWLv2 ile açılmalı (pozitif kapı geçişi 0.99, negatif 0.45)"}
 
 detect:                # Aşama B: metinle bölge bulma (Grounding DINO / OWLv2)
   box_threshold:       {value: 0.25, status: estimate, source: "Grounding DINO örnek varsayılanına yakın, doğrulanmadı"}
@@ -27,6 +28,7 @@ detect:                # Aşama B: metinle bölge bulma (Grounding DINO / OWLv2)
 
 track:                 # Aşama C: SAM 2 ile maske takibi
   max_gap_s:           {value: 1.0,  status: estimate, source: "Bu kadar tespit gelmezse iz kapanır"}
+  enabled:             {value: false, status: estimate, source: "D-016 (kullanıcı): RF-DETR-Seg kendi maskesini verir, takip yerine sık tespit. --mask-track ile açılır"}
   fps:                 {value: 6.0,  status: estimate, source: "Takip saniyede bu kadar karede; aradaki kareler iz ara değeriyle. M5 ölçümü: SAM 2.1 tiny 653 ms/kare, 24 fps takip analizin %87'si (experiments/results/2026-11-04_bench_mps_ilk_olcum.md)"}
 
 blur:

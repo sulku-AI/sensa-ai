@@ -55,10 +55,10 @@ def main() -> None:
                     detector = ColorProxyDetector()
                 else:
                     from sensa_ai import models
-                    from sensa_ai.tracking import Tracker
+                    from sensa_ai.tracking import maybe_tracker
 
                     detector = models.build_default(device=args.device)
-                    tracker = Tracker.from_pretrained(device=args.device)
+                    tracker = maybe_tracker(args.device)
             prompts = config.load_prompts()["proxy" if args.proxy else "positive"]
             bt = pipeline.analyze(v, detector, prompts, tracker)
             bt.save(v.with_suffix(".blurtrack.json"))
