@@ -155,6 +155,8 @@ def main(argv: list[str] | None = None) -> None:
     a.add_argument("--prompts", default="positive", choices=["positive", "proxy"], help="gerçek modelde istem seti")
     a.add_argument("--no-track", action="store_true", help="maske takibini kapat (daha hızlı, daha kaba)")
     a.add_argument("--device", default=None)
+    a.add_argument("--detector", default=None, help="models.yaml detect adı (ör. rfdetr_seg) ya da .pth yolu")
+    a.add_argument("--no-gate", action="store_true", help="SigLIP kapısını kapat (eğitilmiş modelde önerilen)")
     r = sub.add_parser("render")
     r.add_argument("video", type=Path)
     r.add_argument("track", type=Path)
@@ -171,7 +173,8 @@ def main(argv: list[str] | None = None) -> None:
 
             tracker = None if args.no_track else Tracker.from_pretrained(device=args.device)
             # vekil istemle ("red balloon") kapı kapalı: kapının negatifleri kan için ayarlı
-            det = models.build_default(device=args.device, use_gate=args.prompts == "positive")
+            gate = args.prompts == "positive" and not args.no_gate
+            det = models.build_default(device=args.device, use_gate=gate, detector=args.detector)
             bt = analyze(args.video, det, config.load_prompts()[args.prompts], tracker)
         out = args.video.with_suffix(".blurtrack.json")
         bt.save(out)

@@ -9,6 +9,7 @@ detect:
   llmdet_base: iSEE-Laboratory/llmdet_base
   grounding_dino_tiny: IDEA-Research/grounding-dino-tiny
   owlv2_base: google/owlv2-base-patch16-ensemble
+  rfdetr_seg: models/rfdetr_seg_nano/checkpoint_best_total.pth   # kendi eğitimimiz (tools/train_rfdetr); .pth = yerel kontrol noktası
 
 track:
   sam2_tiny: facebook/sam2.1-hiera-tiny             # 1. tercih (2060)

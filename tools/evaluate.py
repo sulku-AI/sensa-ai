@@ -76,11 +76,7 @@ def main() -> None:
 
     prompts = config.load_prompts()
     dilate = int(config.load()["blur"]["dilate_px"])
-    det: models.TextDetector | models.SegDetector
-    if args.detector and args.detector.startswith("rfdetr:"):
-        det = models.SegDetector.from_checkpoint(args.detector.removeprefix("rfdetr:"), device=args.device)
-    else:
-        det = models.TextDetector.from_pretrained(models.resolve("detect", args.detector), device=args.device)
+    det = models.make_detector(args.detector, device=args.device)
     if args.box_threshold is not None:
         det.box_threshold = det.text_threshold = args.box_threshold
     gate = None if args.no_gate else models.SiglipGate.from_pretrained(device=args.device)
@@ -133,7 +129,7 @@ def main() -> None:
     if neg_seen:
         out["negatif_kapi_gecis_orani"] = neg_gate_pass / neg_seen  # tools.bench --gate-pass için (H-03)
     out["saniye_goruntu_basi"] = (time.perf_counter() - t0) / max(n, 1)
-    out["dedektor"] = det.name if isinstance(det, models.SegDetector) else det.model.name_or_path
+    out["dedektor"] = models.detector_name(det)
     out["kapi"] = "yok" if gate is None else gate.model.name_or_path
     out["cihaz"] = det.device
     RESULTS.mkdir(parents=True, exist_ok=True)

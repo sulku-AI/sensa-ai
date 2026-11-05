@@ -145,6 +145,34 @@ class TextDetector:
         ]
 
 
+def _optimize(model: Any) -> None:
+    """rfdetr hızlı çıkarım: yeni sürüm `inference`, eski `optimize_for_inference`. Başarısızsa FP32 kalır."""
+    import torch
+
+    for name in ("inference", "optimize_for_inference"):
+        fn = getattr(model, name, None)
+        if fn is None:
+            continue
+        try:
+            fn(dtype=torch.float16)
+            return
+        except Exception as e:  # noqa: BLE001 (sürüm/cihaz farkı: hızlandırma isteğe bağlı)
+            print(f"[models] FP16 hızlandırma olmadı ({type(e).__name__}: {e}); FP32 sürüyor")
+            return
+
+
+def detector_name(det: TextDetector | SegDetector) -> str:
+    return det.name if isinstance(det, SegDetector) else str(det.model.name_or_path)
+
+
+def make_detector(name: str | None = None, device: str | None = None) -> TextDetector | SegDetector:
+    """models.yaml adı, HF kimliği, `rfdetr:<yol>` ya da `.pth` yolu -> dedektör."""
+    mid = resolve("detect", name.removeprefix("rfdetr:") if name else None)
+    if (name or "").startswith("rfdetr:") or mid.endswith(".pth"):
+        return SegDetector.from_checkpoint(mid, device=device)
+    return TextDetector.from_pretrained(mid, device=device)
+
+
 class SegDetector:
     """Eğitilmiş RF-DETR-Seg kontrol noktası (tools/train_rfdetr). İstemleri yok sayar: tek sınıf "blood".
 
@@ -156,16 +184,24 @@ class SegDetector:
         self.text_threshold = box_threshold
 
     @classmethod
-    def from_checkpoint(cls, path: str, device: str | None = None) -> SegDetector:
+    def from_checkpoint(cls, path: str, device: str | None = None, fp16: bool | None = None) -> SegDetector:
+        p = config.load()["detect"]
+        ck = Path(path) if Path(path).is_absolute() else config.ROOT / path
+        if not ck.exists() and Path(path).exists():
+            ck = Path(path)
+        if not ck.exists():
+            raise FileNotFoundError(f"kontrol noktası yok: {path} (Drive'dan indirip buraya koy)")
         from rfdetr import RFDETRSegNano
 
         d = dev.pick(device)
-        thr = float(config.load()["detect"]["box_threshold"])
         try:
-            model = RFDETRSegNano(pretrain_weights=path, device=d)
+            model = RFDETRSegNano(pretrain_weights=str(ck), num_classes=1, device=d)
         except (TypeError, ValueError):  # yeni rfdetr: cihaz alanı yok, kendisi seçer
-            model = RFDETRSegNano(pretrain_weights=path)
-        return cls(model, d, thr, Path(path).name)
+            model = RFDETRSegNano(pretrain_weights=str(ck), num_classes=1)
+        use_fp16 = bool(p.get("seg_fp16", False)) if fp16 is None else fp16
+        if use_fp16 and d != "cpu":
+            _optimize(model)
+        return cls(model, d, float(p.get("seg_threshold", p["box_threshold"])), ck.name)
 
     def __call__(self, frame_bgr: np.ndarray, prompts: list[str]) -> list[Detection]:
         from .detect import _component_poly
@@ -203,9 +239,8 @@ class GatedDetector:
         return self.detector(frame_bgr, prompts)
 
 
-def build_default(device: str | None = None, use_gate: bool = True) -> GatedDetector:
+def build_default(device: str | None = None, use_gate: bool = True, detector: str | None = None) -> GatedDetector:
     prompts = config.load_prompts()
     gate = SiglipGate.from_pretrained(device=device) if use_gate else None
-    return GatedDetector(
-        gate, TextDetector.from_pretrained(device=device), prompts["negative"], config.load()["gate"]["threshold"]
-    )
+    det = make_detector(detector, device=device)
+    return GatedDetector(gate, det, prompts["negative"], config.load()["gate"]["threshold"])

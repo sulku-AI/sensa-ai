@@ -22,6 +22,8 @@ detect:                # Aşama B: metinle bölge bulma (Grounding DINO / OWLv2)
   box_threshold:       {value: 0.25, status: estimate, source: "Grounding DINO örnek varsayılanına yakın, doğrulanmadı"}
   text_threshold:      {value: 0.25, status: estimate, source: "aynı"}
   max_regions:         {value: 8,    status: estimate, source: "Kare başına en fazla bölge"}
+  seg_threshold:       {value: 0.30, status: measured, source: "Eğitilmiş RF-DETR-Seg güven eşiği; ayrılmış testte 0.3 ve 0.5 aynı yakalama (0.957), 0.3'te kapsama p10 daha iyi (experiments/results/2026-11-05_rfdetr_seg_nano_ilk_egitim.md, küçük set)"}
+  seg_fp16:            {value: true, status: estimate, source: "RF-DETR çıkarımı yarım hassasiyet (CUDA/MPS); rfdetr uyarısı T4'te ~8 kat der, doğrulanmadı"}
 
 track:                 # Aşama C: SAM 2 ile maske takibi
   max_gap_s:           {value: 1.0,  status: estimate, source: "Bu kadar tespit gelmezse iz kapanır"}

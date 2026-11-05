@@ -61,7 +61,7 @@ def main() -> None:
     prompts = config.load_prompts()
     frames = synthetic_frames(args.frames, args.res)
     gate = models.SiglipGate.from_pretrained(device=args.device)
-    det = models.TextDetector.from_pretrained(models.resolve("detect", args.detector), device=args.device)
+    det = models.make_detector(args.detector, device=args.device)
     t_gate = timed(lambda f: gate.score(f, prompts["positive"], prompts["negative"]), frames)
     t_det = timed(lambda f: det(f, prompts["proxy"]), frames)
 
@@ -72,7 +72,7 @@ def main() -> None:
         "kare": f"{frames[0].shape[1]}x{frames[0].shape[0]}",
         "kapi_model": gate.model.name_or_path,
         "kapi_ms": round(t_gate * 1000, 1),
-        "dedektor_model": det.model.name_or_path,
+        "dedektor_model": models.detector_name(det),
         "dedektor_ms": round(t_det * 1000, 1),
     }
     sfps = float(p["lookahead"]["sample_fps"])

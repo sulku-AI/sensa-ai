@@ -74,3 +74,21 @@ def test_rfdetr_version_kwargs() -> None:
 
     assert tr.version_kwargs(New, "cuda") == {"accelerator": "gpu", "save_dataset_grids": False}
     assert tr.version_kwargs(None, "mps") == {"device": "mps", "amp": False}
+
+
+def test_make_detector_routes_checkpoints(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    seen: list[str] = []
+    monkeypatch.setattr(models.SegDetector, "from_checkpoint", classmethod(lambda cls, p, device=None: seen.append(p)))
+    models.make_detector("rfdetr_seg")
+    models.make_detector(f"rfdetr:{tmp_path / 'a.pth'}")
+    models.make_detector(str(tmp_path / "b.pth"))
+    assert seen == [
+        "models/rfdetr_seg_nano/checkpoint_best_total.pth",
+        str(tmp_path / "a.pth"),
+        str(tmp_path / "b.pth"),
+    ]
+
+
+def test_seg_checkpoint_missing_is_clear() -> None:
+    with pytest.raises(FileNotFoundError, match="Drive"):
+        models.SegDetector.from_checkpoint("models/yok.pth")
