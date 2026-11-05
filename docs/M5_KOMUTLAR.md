@@ -123,16 +123,27 @@ python -m tools.before_after data/vekil/balon.mp4 previews/balon_once_sonra.mp4 
 
 Pozitif klasörden video verilirse araç reddeder.
 
-## 6. Damıtma eğitimi (M5, gece prize takılıyken)
+## 6. Eğitilmiş model (RF-DETR-Seg) Mac'te
+
+Eğitim Colab'da yapılır (`notebooks/colab_sayi.ipynb`); Mac ısınıyor. Model dosyası Drive'da: `MyDrive/sensa_ai/rfdetr/checkpoint_best_total.pth`. Bu bir ağırlık dosyası, görüntü değil.
+
+1. Drive'dan `checkpoint_best_total.pth` dosyasını indir.
+2. Terminalde (dosya İndirilenler'deyse):
 
 ```bash
-python -m tools.train_rfdetr prepare --src data/pozitif/blood_seg_joost data/pozitif/blood_pure_blur --neg data/negatif/coco
-python -m tools.train_rfdetr train --epochs 30
+cd ~/sensa-ai
+source .venv/bin/activate
+git pull
+pip install "rfdetr>=1.11"
+mkdir -p models/rfdetr_seg_nano
+mv ~/Downloads/checkpoint_best_total.pth models/rfdetr_seg_nano/
+python -m tools.bench --detector rfdetr_seg --res 720 --frames 20 --no-gate
+python -m tools.bench --detector rfdetr_seg --res 720 --frames 20 --no-gate --no-track
 ```
 
-- `python -m tools.train_rfdetr train --epochs 30`: MPS; saatler sürebilir, kapak açık ve prizde
+Çıkan `realtime_factor` iki satırını gönder (hedef 1.2). İkincisi takipsiz: model kendi maskesini verdiği için takip belki gerekmez.
 
-Ağırlıklar `models/rfdetr_seg_nano/` altına (repoya girmez). MPS'te bir hata olursa aynı komut `--device cpu` ile çalışır (çok yavaş), ya da masaüstündeki 2060'ta `--device cuda`.
+Not: eğitilmiş model kan için eğitildi; kırmızı balonlu vekil videoda bölge bulmaması normal. Vekil oynatıcı testi OWLv2 ile sürer.
 
 ## 7. Bir sorun çıkarsa
 

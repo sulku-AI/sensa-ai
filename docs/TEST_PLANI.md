@@ -42,7 +42,7 @@ Metin özetleri **nötr şablonla** yazılır, betimleme yok: `klip 07 · 00:41-
 
 | ID | İddia | Test | Geçme ölçütü | Kim bakar |
 |---|---|---|---|---|
-| H-01 | Metin istemli modeller kanlı bölgeleri yakalar | Pozitif sette olay bazında yakalama ve kapsama; etiket = ortağın zaman aralıkları | `requirements.event_recall`, `frame_coverage` | Model + ortak |
+| H-01 (sıfır atış ÇÜRÜTÜLDÜ; eğitilmiş RF-DETR-Seg ön DESTEKLENDİ, 46 görüntülük test, 2026-11-05: `experiments/results/2026-11-05_rfdetr_seg_nano_ilk_egitim.md`) | Modeller kanlı bölgeleri yakalar | Pozitif sette olay bazında yakalama ve kapsama; etiket = ortağın zaman aralıkları | `requirements.event_recall`, `frame_coverage` | Model + ortak |
 | H-02 | Kansız kırmızı şeylerde az yanlış alarm | Negatif sette dakikada yanlış bulanıklık | `requirements.false_alarm_per_min` | **Emirhan izleyebilir** |
 | H-03 (KISMEN, 2026-11-04: M5'te 1.95, sentetik kare, kapı oranı varsayım; `experiments/results/2026-11-04_bench_mps_edgetam_owlv2.md`) | Dizüstü ekran kartında gerçek zamandan hızlı | Analiz süresi / video süresi, tampon hiç `safe_margin_s` altına inmiyor | `requirements.realtime_factor` | Sayı |
 | H-04 | Bulanıklık izlemeyi bozmuyor | Vekil ve negatif klipler; bulanıklık doğal mı, rampa yeterince önce mi | Emirhan + ortak "rahatsız etmiyor" der | **Emirhan izleyebilir** |
