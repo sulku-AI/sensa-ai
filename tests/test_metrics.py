@@ -37,3 +37,12 @@ def test_event_scores() -> None:
     assert s["olay_disi_bulanik_s"] == pytest.approx(1.1, abs=0.15)
     # rampa geç başlamayı kapatır
     assert metrics.event_scores(bt, ev[:1], hold_in_s=0.5)["gec_baslama_ort_s"] <= 0.01
+
+
+def test_wilson_interval() -> None:
+    from sensa_ai.metrics import wilson
+
+    lo, hi = wilson(44, 46)
+    assert 0.84 < lo < 0.86 and 0.98 < hi < 0.995
+    assert wilson(0, 0) != wilson(0, 0)  # nan
+    assert wilson(0, 10)[0] == 0.0

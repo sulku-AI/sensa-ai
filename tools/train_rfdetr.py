@@ -113,10 +113,11 @@ def prepare(args: argparse.Namespace) -> None:
         d = OUT / split
         d.mkdir(parents=True)
         coco: dict[str, list] = {"images": [], "annotations": [], "categories": [{"id": 0, "name": "blood"}]}
-        for k, (path, w, h, anns, _, _) in enumerate(rows, 1):
+        for k, (path, w, h, anns, key, _) in enumerate(rows, 1):
             name = f"{k:06d}{path.suffix.lower()}"
             shutil.copyfile(path, d / name)
-            coco["images"].append({"id": k, "file_name": name, "width": w, "height": h})
+            src = key.split(":", 1)[0]  # kaynak adı (evaluate kaynağa göre döker)
+            coco["images"].append({"id": k, "file_name": name, "width": w, "height": h, "source": src})
             for a in anns:
                 coco["annotations"].append(
                     {"id": len(coco["annotations"]) + 1, "image_id": k, "category_id": 0, "iscrowd": 0, **a}

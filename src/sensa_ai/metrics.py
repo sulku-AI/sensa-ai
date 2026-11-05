@@ -35,6 +35,17 @@ def boxes_to_mask(shape: tuple[int, int], boxes: list[Box], dilate_px: int = 0) 
     return m
 
 
+def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    """İkili oran için %95 güven aralığı (Wilson). Küçük setlerde 0.957 = 44/46 gibi sonuçların payı."""
+    if n == 0:
+        return (float("nan"), float("nan"))
+    p = k / n
+    d = 1 + z * z / n
+    c = (p + z * z / (2 * n)) / d
+    h = z * np.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
+    return (max(0.0, float(c - h)), min(1.0, float(c + h)))
+
+
 @dataclass
 class Score:
     """Bir görüntü setinin özeti."""
@@ -59,14 +70,21 @@ class Score:
 
     def summary(self, hit_coverage: float = 0.5) -> dict[str, float]:
         cov = np.asarray(self.coverages) if self.coverages else np.zeros(0)
+        hits = int((cov >= hit_coverage).sum())
+        ylo, yhi = wilson(hits, int(cov.size))
+        alo, ahi = wilson(self.neg_flagged, self.n_neg)
         return {
             "pozitif_goruntu": self.n_pos,
             "yakalama_orani": float((cov >= hit_coverage).mean()) if cov.size else float("nan"),
             "ortalama_kapsama": float(cov.mean()) if cov.size else float("nan"),
+            "yakalama_alt_95": ylo,
+            "yakalama_ust_95": yhi,
             "kapsama_p10": float(np.percentile(cov, 10)) if cov.size else float("nan"),
             "fazla_bulaniklik_ort": float(np.mean(self.overblur)) if self.overblur else float("nan"),
             "negatif_goruntu": self.n_neg,
             "negatif_yanlis_alarm_orani": self.neg_flagged / self.n_neg if self.n_neg else float("nan"),
+            "yanlis_alarm_alt_95": alo,
+            "yanlis_alarm_ust_95": ahi,
             "negatif_bulanik_alan_ort": float(np.mean(self.neg_area)) if self.neg_area else float("nan"),
         }
 
