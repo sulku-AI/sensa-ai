@@ -55,14 +55,19 @@ def main() -> None:
     ap.add_argument("--res", type=int, default=720, help="kare yüksekliği (piksel)")
     ap.add_argument("--gate-pass", type=float, default=0.2, help="kapıyı geçen kare oranı varsayımı")
     ap.add_argument("--no-track", action="store_true")
+    ap.add_argument("--no-gate", action="store_true", help="kapı yok: dedektör her örnek karede (eğitilmiş model)")
     args = ap.parse_args()
 
     p = config.load()
     prompts = config.load_prompts()
     frames = synthetic_frames(args.frames, args.res)
-    gate = models.SiglipGate.from_pretrained(device=args.device)
+    gate = None if args.no_gate else models.SiglipGate.from_pretrained(device=args.device)
     det = models.make_detector(args.detector, device=args.device)
-    t_gate = timed(lambda f: gate.score(f, prompts["positive"], prompts["negative"]), frames)
+    if gate is None:
+        t_gate, args.gate_pass = 0.0, 1.0
+    else:
+        g = gate
+        t_gate = timed(lambda f: g.score(f, prompts["positive"], prompts["negative"]), frames)
     t_det = timed(lambda f: det(f, prompts["proxy"]), frames)
 
     res: dict[str, object] = {
@@ -70,7 +75,7 @@ def main() -> None:
         "makine": f"{platform.system()} {platform.machine()} {platform.processor()}",
         "cihaz": det.device,
         "kare": f"{frames[0].shape[1]}x{frames[0].shape[0]}",
-        "kapi_model": gate.model.name_or_path,
+        "kapi_model": gate.model.name_or_path if gate else "yok",
         "kapi_ms": round(t_gate * 1000, 1),
         "dedektor_model": models.detector_name(det),
         "dedektor_ms": round(t_det * 1000, 1),
