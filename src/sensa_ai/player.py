@@ -4,7 +4,8 @@
     python -m sensa_ai.player film.mp4                # gerçek modeller (M5'te MPS)
     python -m sensa_ai.player film.mp4 --track film.blurtrack.json   # önceden üretilmiş iz
 
-Tuşlar: boşluk = duraklat, ← / → = 10 sn geri / ileri, q = çık.
+Tuşlar: boşluk = duraklat, ← / → = 10 sn geri / ileri, b ya da Esc = anında siyah ekran
+(aç/kapa, ses kısılmaz; duraklatmaz), q = çık.
 Ses: PyAV + sounddevice varsa ses ana saattir (görüntü sese uyar, kayma birikmez; audio.py).
 Yoksa ffplay ayrı süreçle çalınır (kayma ~100 ms olabilir, ölçülmedi), o da yoksa sessiz.
 
@@ -166,7 +167,7 @@ def play(
         clock = WallClock()
         audio.start(0.0)  # type: ignore[union-attr]
     clock.start(0.0)
-    paused, pos = False, 0.0
+    paused, pos, black = False, 0.0, False
     win = "sensa-ai"
     cv2.namedWindow(win, cv2.WINDOW_NORMAL)
     while True:
@@ -185,10 +186,12 @@ def play(
         out, m = comp.render(frame, pos)
         if m is la.Mode.FAILSAFE:
             cv2.putText(out, "analiz yetisiyor...", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
-        cv2.imshow(win, out)
+        cv2.imshow(win, np.zeros_like(out) if black else out)
         key = cv2.waitKey(max(1, int(1000 / fps) - 2)) & 0xFF
         if key == ord("q"):
             break
+        if key in (ord("b"), 27):  # panik tuşu: görüntü siyah, analiz sürer
+            black = not black
         if key == ord(" "):
             paused = not paused
             if paused:
