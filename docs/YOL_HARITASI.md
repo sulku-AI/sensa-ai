@@ -10,6 +10,7 @@ Her adımın bir **çıkış kapısı** var: kapı geçilmeden sonrakine geçilm
 | **M3** (kod yazıldı; ses PyAV ana saat, yedek ffplay) | Canlı oynatıcı: OpenCV penceresi, ses PyAV + sounddevice ana saat (yoksa ffplay / sessiz); analiz iş parçacığı oynatma kafasının 30 sn önünde (`lookahead.next_window`); tampon kısalınca güvenli mod (D-007); ileri sarmada yeniden tarama | H-03: gerçek zamandan hızlı, tampon düşmüyor; vekil videoda canlı bulanıklık | Emirhan (vekil) |
 | **M4** | Hassasiyet ve bulanıklık gücü ayarı (kişi profili), H-04 ve H-06; Instagram için kansız önce/sonra klipleri (vekil ve negatif) | Ortağın kontrol listesinde 0 sızan olay; Emirhan bulanıklığı "rahatsız etmiyor" der | Ortak + Emirhan (vekil/negatif) |
 | **M5** (eğitim betiği hazır: `tools/autolabel`, `tools/train_rfdetr`; tarayıcı oynatıcısı `tools/web_player`, D-013) | Damıtma: RF-DETR-Seg Nano, hattın otomatik etiketleriyle küçük hızlı model; tarayıcı eklentisi (çekirdek `web/blurtrack.js` hazır, eklenti kabuğu yok); platformlar için iz biçimi belgesi (`docs/BLURTRACK_FORMAT.md`) | Ayrı plan | — |
+| **Ses ipucu** (demo kodu yazıldı, D-019) | Çığlık/bağırış güveni artırır, mutfak sesi azaltır (AST AudioSet); `analyze --audio`, `tools/eval_video --audio`, kansız demo `tools/audio_demo` | H-07: yemek klibinde yanlış alarm düşer, dizide yakalama düşmez | Negatif: Emirhan. Pozitif: ortak |
 
 ## M0 sonrası hemen yapılabilecekler
 

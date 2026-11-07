@@ -6,6 +6,10 @@ Etiket biçimi (data/etiket/<video adı>.json), görüntü içermez; ortak video
 
     python -m tools.eval_video data/pozitif/videolar --labels data/etiket            # analiz + değerlendirme
     python -m tools.eval_video data/pozitif/videolar --labels data/etiket --tracks   # var olan .blurtrack.json
+    python -m tools.eval_video data/negatif/yemek --labels data/etiket --audio ast_audioset  # D-019
+
+`--audio` verilirse dedektör aday eşiğiyle çalışır ve her video iki satır yazar: `sessiz` (yalnız görüntü)
+ve `sesli` (ses ipucuyla süzülmüş). Aynı adaylardan çıktıkları için fark yalnız sesten gelir.
 """
 
 from __future__ import annotations
@@ -35,11 +39,14 @@ def main() -> None:
     ap.add_argument("--proxy", action="store_true", help="vekil dedektör (vekil videolar için)")
     ap.add_argument("--profile", default=None)
     ap.add_argument("--device", default=None)
+    ap.add_argument("--audio", default=None, help="ses ipucu: proxy ya da models.yaml audio adı (D-019)")
     args = ap.parse_args()
     config.set_profile(args.profile)
     b = config.load()["blur"]
 
-    detector = tracker = None
+    detector = tracker = clf = None
+    a = config.load()["audio"]
+    cand = float(a["candidate_threshold"]) if args.audio else None
     rows = []
     for v in sorted(p for p in args.videos.rglob("*") if p.suffix.lower() in VIDEO_EXT):
         lab = args.labels / f"{v.stem}.json"
@@ -52,19 +59,32 @@ def main() -> None:
                 if args.proxy:
                     from sensa_ai.detect import ColorProxyDetector
 
-                    detector = ColorProxyDetector()
+                    detector = ColorProxyDetector(scored=cand is not None, min_score=cand or 0.0)
                 else:
                     from sensa_ai import models
                     from sensa_ai.tracking import maybe_tracker
 
                     detector = models.build_default(device=args.device)
+                    if cand is not None and isinstance(detector.detector, models.SegDetector):
+                        detector.detector.box_threshold = cand
                     tracker = maybe_tracker(args.device)
             prompts = config.load_prompts()["proxy" if args.proxy else "positive"]
             bt = pipeline.analyze(v, detector, prompts, tracker)
             bt.save(v.with_suffix(".blurtrack.json"))
-        s = metrics.event_scores(bt, load_events(lab), **blur.timing(b))
-        rows.append({"video": v.name, **s})
-        print(v.name, s)
+        events = load_events(lab)
+        if args.audio:
+            from sensa_ai import audio_cue
+
+            clf = clf or audio_cue.make_classifier(args.audio, device=args.device)
+            fused, tl, decisions = audio_cue.run(v, bt, clf)
+            audio_cue.save_report(v.with_suffix(".audiocue.json"), tl, decisions, args.audio)
+            variants = [("sessiz", audio_cue.without_audio(bt, float(a["keep_threshold"]))), ("sesli", fused)]
+        else:
+            variants = [("", bt)]
+        for name, track in variants:
+            s = metrics.event_scores(track, events, **blur.timing(b))
+            rows.append({"video": v.name, **({"hat": name} if name else {}), **s})
+            print(v.name, name, s)
 
     out = ROOT / "experiments" / "results"
     out.mkdir(parents=True, exist_ok=True)

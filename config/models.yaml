@@ -16,7 +16,11 @@ track:
   sam2_small: facebook/sam2.1-hiera-small
   edgetam: facebook/EdgeTAM@refs/pr/1              # M5 ana hedef; transformers ağırlıkları yalnız HF PR #1'de (ana dalda yalnız edgetam.pt)
 
+audio:                                               # D-019 ses ipucu demosu
+  ast_audioset: MIT/ast-finetuned-audioset-10-10-0.4593   # BSD-3-Clause, AudioSet 527 sınıf, ~87M parametre
+
 default:
   gate: siglip
   detect: rfdetr_seg               # D-016 (kullanıcı): kendi eğitimimiz, M5'te 25 ms; dosya yoksa owlv2_base'e düşer (D-014)
   track: edgetam                  # M5 ana hedef (D-012); 2060 için sam2_tiny
+  audio: ast_audioset             # D-019 demo
