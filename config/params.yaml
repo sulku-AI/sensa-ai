@@ -1,0 +1,69 @@
+# sensa-ai: bütün sayısal parametrelerin TEK kaynağı.
+#
+# status (her değer bir tane taşımalı):
+#   measured   : bizim makinede / videoda ölçtüğümüz değer (dosya ve tarih yazılmalı)
+#   datasheet  : model kartı, lisans ya da standart değeri (kaynak yazılmalı)
+#   literature : yayımlanmış değer, bizim tarafımızdan doğrulanmadı (kaynak yazılmalı)
+#   sim        : bizim deneyimizin sonucu (betik ve tarih yazılmalı)
+#   estimate   : kendi tahminimiz, ölçülmedi
+#   target     : tasarım hedefi, SONUÇ DEĞİL
+#
+# Kod bu değerleri src/sensa_ai/config.py ile okur. Belgeler kopya sayı tutmaz, buraya atıf yapar.
+
+lookahead:
+  window_s:            {value: 30.0, status: target,   source: "D-002 (kullanıcı): oynatma kafasının 30 sn önü taranır"}
+  safe_margin_s:       {value: 5.0,  status: estimate, source: "Tampon bundan kısaysa güvenli mod (D-007)"}
+  sample_fps:          {value: 6.0,  status: estimate, source: "D-016 (kullanıcı): eğitilmiş RF-DETR-Seg saniyede 6 kare, takipsiz (M5: 25 ms/kare, hesap rf ≈ 6.7). OWLv2 + takip için 2.0 idi"}
+
+gate:                  # Aşama A: kare başına ucuz eleme (SigLIP sıfır atış)
+  threshold:           {value: 0.30, status: estimate, source: "Ayar M2'de negatif setle yapılacak"}
+  enabled:             {value: false, status: estimate, source: "D-016: eğitilmiş model negatiflerle eğitildi, kapıya gerek yok. OWLv2 ile açılmalı (pozitif kapı geçişi 0.99, negatif 0.45)"}
+
+detect:                # Aşama B: metinle bölge bulma (Grounding DINO / OWLv2)
+  box_threshold:       {value: 0.25, status: estimate, source: "Grounding DINO örnek varsayılanına yakın, doğrulanmadı"}
+  text_threshold:      {value: 0.25, status: estimate, source: "aynı"}
+  max_regions:         {value: 8,    status: estimate, source: "Kare başına en fazla bölge"}
+  seg_threshold:       {value: 0.30, status: measured, source: "Eğitilmiş RF-DETR-Seg güven eşiği; ayrılmış testte 0.3 ve 0.5 aynı yakalama (0.957), 0.3'te kapsama p10 daha iyi (experiments/results/2026-11-05_rfdetr_seg_nano_ilk_egitim.md, küçük set)"}
+  seg_fp16:            {value: true, status: estimate, source: "RF-DETR çıkarımı yarım hassasiyet (CUDA/MPS); rfdetr uyarısı T4'te ~8 kat der, doğrulanmadı"}
+
+track:                 # Aşama C: SAM 2 ile maske takibi
+  max_gap_s:           {value: 1.0,  status: estimate, source: "Bu kadar tespit gelmezse iz kapanır"}
+  enabled:             {value: false, status: estimate, source: "D-016 (kullanıcı): RF-DETR-Seg kendi maskesini verir, takip yerine sık tespit. --mask-track ile açılır"}
+  fps:                 {value: 6.0,  status: estimate, source: "Takip saniyede bu kadar karede; aradaki kareler iz ara değeriyle. M5 ölçümü: SAM 2.1 tiny 653 ms/kare, 24 fps takip analizin %87'si (experiments/results/2026-11-04_bench_mps_ilk_olcum.md)"}
+
+blur:
+  sigma_px:            {value: 18.0, status: estimate, source: "Hafif bulanıklık (1080p); kişiye göre ayarlanacak (M4)"}
+  feather_px:          {value: 24,   status: estimate, source: "Maske kenarı yumuşatma, keskin kutu görünmesin"}
+  dilate_px:           {value: 16,   status: estimate, source: "Maskeyi biraz büyüt, kenardan sızmasın"}
+  ramp_in_s:           {value: 0.30, status: estimate, source: "Bulanıklık bölge görünmeden önce başlar"}
+  ramp_out_s:          {value: 0.50, status: estimate, source: "Bölge kaybolduktan sonra yavaşça kalkar"}
+  hold_factor:         {value: 1.0,  status: estimate, source: "İlk tespitten önce / son tespitten sonra tam güç tutma = hold_factor / sample_fps sn (örnekleme aralığını kapatır)"}
+  failsafe_sigma_px:   {value: 10.0, status: estimate, source: "Güvenli modda tam kare hafif bulanıklık (D-007)"}
+  failsafe_full_frame: {value: false, status: target, source: "D-018 (kullanıcı): analiz yetişmeyince tüm kareyi bulanıklaştırma kapalı; yalnız bulunmuş bölgeler bulanık"}
+
+safe_preview:          # İnsan gözü için diske yazılan HER görüntü bu ayarlardan geçer (D-004)
+  block_px:            {value: 16,   status: estimate, source: "Pikselleştirme blok boyutu (küçük resim üzerinde)"}
+  max_side_px:         {value: 160,  status: estimate, source: "Küçük resim uzun kenarı"}
+  grayscale:           {value: true, status: estimate, source: "Kırmızıyı göstermemek için gri tonlama"}
+
+requirements:          # Kabul ölçütleri: docs/TEST_PLANI.md
+  event_recall:        {value: 0.95, status: target, source: "H-01: olay bazında yakalama oranı"}
+  frame_coverage:      {value: 0.90, status: target, source: "H-01: olay süresince maskenin bölgeyi örtme oranı"}
+  false_alarm_per_min: {value: 0.5,  status: target, source: "H-02: negatif sette dakikada en fazla yanlış bulanıklık"}
+  realtime_factor:     {value: 1.2,  status: target, source: "H-03: analiz hızı / oynatma hızı (en az)"}
+
+profiles:              # M4 hassasiyet profilleri: seçilen profil yukarıdaki değerlerin üzerine yazar
+  hafif:               # daha az bulanıklık, daha az yanlış alarm
+    blur.sigma_px:         {value: 12.0, status: estimate, source: "M4, kullanıcı ayarlayacak"}
+    blur.dilate_px:        {value: 8,    status: estimate, source: "M4"}
+    gate.threshold:        {value: 0.40, status: estimate, source: "M4"}
+    detect.box_threshold:  {value: 0.30, status: estimate, source: "M4"}
+  orta:                # varsayılan: yukarıdaki değerler aynen
+    blur.sigma_px:         {value: 18.0, status: estimate, source: "= blur.sigma_px"}
+  guclu:               # kaçırmayı en aza indir: daha çok ve daha erken bulanıklık
+    blur.sigma_px:         {value: 28.0, status: estimate, source: "M4"}
+    blur.dilate_px:        {value: 28,   status: estimate, source: "M4"}
+    blur.ramp_in_s:        {value: 0.80, status: estimate, source: "M4"}
+    gate.threshold:        {value: 0.15, status: estimate, source: "M4"}
+    detect.seg_threshold:  {value: 0.20, status: estimate, source: "guclu: RF-DETR esiği 0.30 -> 0.20, ölçülmedi"}
+    detect.box_threshold:  {value: 0.18, status: estimate, source: "M4"}

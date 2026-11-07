@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sensa web oynatıcı</title>
+<style>
+  :root { --bg: #111; --fg: #ddd; --muted: #888; --accent: #6ab0ff; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 system-ui, sans-serif; }
+  header { padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  label { display: inline-flex; gap: 6px; align-items: center; }
+  #stage { display: flex; justify-content: center; padding: 0 16px; }
+  canvas { max-width: 100%; max-height: 80vh; background: #000; }
+  /* Ham video ASLA görünmez: yalnız ses ve kare kaynağı. Görüntü yalnız tuvalden, bulanıklıktan sonra. */
+  video { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  #status { color: var(--muted); padding: 8px 16px; }
+  button { background: #222; color: var(--fg); border: 1px solid #444; padding: 6px 12px; border-radius: 4px; }
+  button:disabled { opacity: .4; }
+</style>
+</head>
+<body>
+<header>
+  <label>Video <input type="file" id="videoFile" accept="video/*"></label>
+  <label>İz <input type="file" id="trackFile" accept=".json"></label>
+  <button id="play" disabled>Oynat</button>
+  <input type="range" id="seek" min="0" max="1" step="0.01" value="0" disabled style="flex:1;min-width:160px">
+  <span id="time">0:00</span>
+</header>
+<div id="stage"><canvas id="out" width="640" height="360"></canvas></div>
+<div id="status">Video ve .blurtrack.json seç. İz yüklenmeden oynatma açılmaz.</div>
+<video id="v" playsinline preload="auto"></video>
+
+<script type="module">
+import { parse, activeRegions, mode, timingFrom } from "./blurtrack.js";
+
+const $ = (id) => document.getElementById(id);
+const v = $("v"), out = $("out"), ctx = out.getContext("2d");
+const blurred = document.createElement("canvas"), bctx = blurred.getContext("2d");
+const mask = document.createElement("canvas"), mctx = mask.getContext("2d");
+let params = null, timing = null, bt = null, videoReady = false;
+
+async function loadParams() {
+  const q = new URLSearchParams(location.search).get("profile");
+  const r = await fetch("params.json" + (q ? "?profile=" + encodeURIComponent(q) : ""));
+  params = await r.json();
+  timing = timingFrom(params);
+}
+
+function sizeCanvases() {
+  for (const c of [out, blurred, mask]) { c.width = v.videoWidth; c.height = v.videoHeight; }
+}
+
+function fillRegion(r, w, h, dilate) {
+  mctx.globalAlpha = Math.max(0, Math.min(1, r.strength));
+  mctx.fillStyle = mctx.strokeStyle = "#fff";
+  mctx.lineJoin = "round";
+  mctx.lineWidth = dilate * 2;
+  const polys = (r.poly || []).filter((p) => p.length >= 6);
+  if (polys.length) {
+    for (const p of polys) {
+      mctx.beginPath();
+      for (let i = 0; i < p.length; i += 2) mctx.lineTo(p[i] * w, p[i + 1] * h);
+      mctx.closePath();
+      mctx.fill();
+      if (dilate > 0) mctx.stroke();
+    }
+  } else {
+    const [x0, y0, x1, y1] = r.box;
+    mctx.fillRect(x0 * w - dilate, y0 * h - dilate, (x1 - x0) * w + 2 * dilate, (y1 - y0) * h + 2 * dilate);
+  }
+}
+
+function draw(t) {
+  const w = out.width, h = out.height, b = params.blur;
+  const m = mode(bt, t, params.lookahead.safe_margin_s);
+  if (m === "failsafe" && b.failsafe_full_frame !== false) {
+    ctx.filter = `blur(${b.failsafe_sigma_px}px)`;
+    ctx.drawImage(v, 0, 0, w, h);
+    ctx.filter = "none";
+    $("status").textContent = "Analiz yetişmiyor: güvenli mod (tam kare bulanık)";
+    return;
+  }
+  ctx.drawImage(v, 0, 0, w, h);
+  const regions = activeRegions(bt, t, timing);
+  if (regions.length) {
+    mctx.clearRect(0, 0, w, h);
+    mctx.filter = "none";
+    for (const r of regions) fillRegion(r, w, h, b.dilate_px);
+    // Yumuşak kenar: maskeyi bulanıklaştır (Python: GaussianBlur sigma = feather_px / 2)
+    bctx.globalCompositeOperation = "copy";
+    bctx.filter = `blur(${b.feather_px / 2}px)`;
+    bctx.drawImage(mask, 0, 0);
+    bctx.filter = "none";
+    mctx.globalAlpha = 1;
+    mctx.globalCompositeOperation = "copy";
+    mctx.drawImage(blurred, 0, 0);
+    mctx.globalCompositeOperation = "source-over";
+    // Bulanık kare, yumuşak maskeyle kırpılır ve üstüne çizilir
+    bctx.globalCompositeOperation = "copy";
+    bctx.filter = `blur(${b.sigma_px}px)`;
+    bctx.drawImage(v, 0, 0, w, h);
+    bctx.filter = "none";
+    bctx.globalCompositeOperation = "destination-in";
+    bctx.drawImage(mask, 0, 0);
+    bctx.globalCompositeOperation = "source-over";
+    ctx.drawImage(blurred, 0, 0);
+  }
+  $("status").textContent = `bölge: ${regions.length}`;
+}
+
+function fmt(s) { const m = Math.floor(s / 60); return `${m}:${String(Math.floor(s % 60)).padStart(2, "0")}`; }
+
+function loop(_now, meta) {
+  const t = meta ? meta.mediaTime : v.currentTime;
+  if (bt && params) draw(t);  // iz yoksa tuval siyah kalır: ham kare hiç çizilmez
+  $("seek").value = String(t);
+  $("time").textContent = fmt(t);
+  schedule();
+}
+function schedule() {
+  if ("requestVideoFrameCallback" in v) v.requestVideoFrameCallback(loop);
+  else requestAnimationFrame(() => loop(0, null));
+}
+
+function ready() {
+  const ok = videoReady && bt !== null && params !== null;
+  $("play").disabled = !ok;
+  $("seek").disabled = !ok;
+  if (ok) { $("seek").max = String(v.duration); draw(v.currentTime); }
+}
+
+$("videoFile").addEventListener("change", (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  videoReady = false;
+  v.src = URL.createObjectURL(f);
+});
+v.addEventListener("loadeddata", () => { sizeCanvases(); videoReady = true; ready(); schedule(); });
+v.addEventListener("seeked", () => { if (bt && params) draw(v.currentTime); });
+
+$("trackFile").addEventListener("change", async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try { bt = parse(JSON.parse(await f.text())); $("status").textContent = `İz yüklendi: ${bt.tracks.length} iz`; }
+  catch (err) { bt = null; $("status").textContent = "İz okunamadı: " + err.message; }
+  ready();
+});
+
+$("play").addEventListener("click", () => {
+  if (v.paused) { v.play(); $("play").textContent = "Duraklat"; }
+  else { v.pause(); $("play").textContent = "Oynat"; }
+});
+$("seek").addEventListener("input", (e) => { v.currentTime = Number(e.target.value); });
+document.addEventListener("keydown", (e) => { if (e.code === "Space" && !$("play").disabled) { e.preventDefault(); $("play").click(); } });
+
+// Test kancası (tests/test_web.py): dosya seçici yerine doğrudan URL ve iz nesnesi
+window.sensa = {
+  async load(videoUrl, trackObj) { bt = parse(trackObj); v.src = videoUrl; },
+  seek(t) { return new Promise((res) => { v.addEventListener("seeked", () => { draw(v.currentTime); res(); }, { once: true }); v.currentTime = t; }); },
+  ready: () => videoReady && params !== null,
+};
+
+async function autoLoad() {
+  // tools/web_player bir video ve iz verdiyse doğrudan yükle
+  try {
+    const info = await (await fetch("media/config.json")).json();
+    if (info.track) bt = parse(await (await fetch(info.track)).json());
+    if (info.video) v.src = info.video;
+  } catch (_) { /* yalnız dosya seçici */ }
+}
+
+loadParams().then(autoLoad).then(ready).catch((err) => { $("status").textContent = "Yüklenemedi: " + err.message; });
+</script>
+</body>
+</html>

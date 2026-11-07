@@ -1,0 +1,24 @@
+# Metin istemleri (prompt). Sayı değil, bu yüzden params.yaml dışında.
+# Pozitif istemler bulanıklaştırılacak bölgeleri, negatifler kapı aşamasında
+# yanlış alarmı bastırmak için karşılaştırma sınıflarını tanımlar.
+
+positive:
+  - blood
+  - bleeding wound
+  - open wound
+  - gore
+
+# Kansız ama renk/doku olarak benzeyen şeyler (H-02 negatif seti ile aynı liste)
+negative:
+  - ketchup
+  - tomato sauce
+  - red paint
+  - red wine
+  - red light
+  - lipstick
+  - red fabric
+  - raw meat on a cutting board
+
+# Vekil (proxy) istem: boru hattını kan olmadan uçtan uca sınamak için (D-005).
+proxy:
+  - red balloon
