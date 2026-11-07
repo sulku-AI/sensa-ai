@@ -148,7 +148,9 @@ def main() -> None:
         out["kaynaklar"] = {k: v.summary() for k, v in sorted(by_src.items())}
     res_dir = args.results or RESULTS
     res_dir.mkdir(parents=True, exist_ok=True)
-    stem = f"{dt.date.today()}_eval_{Path(str(out['dedektor'])).stem}_k{det.box_threshold:g}"
+    sets = "+".join(f.name for f in [*(args.pos or []), *(args.neg or [])]) or "set"
+    out["veri"] = sets
+    stem = f"{dt.date.today()}_eval_{Path(str(out['dedektor'])).stem}_{sets}_k{det.box_threshold:g}"
     (res_dir / f"{stem}.json").write_text(json.dumps(out, indent=1, ensure_ascii=False))
     lines = [f"# Değerlendirme {dt.date.today()}", "", "| ölçüt | değer |", "|---|---|"]
     lines += [f"| {k} | {_fmt(v)} |" for k, v in out.items() if k != "kaynaklar"]

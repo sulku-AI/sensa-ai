@@ -41,12 +41,8 @@ def main() -> None:
 
     prompts = config.load_prompts()
     p = config.load()
-    gd = models.GatedDetector(
-        models.SiglipGate.from_pretrained(device=args.device),
-        models.TextDetector.from_pretrained(models.resolve("detect", args.detector), device=args.device),
-        prompts["negative"],
-        p["gate"]["threshold"],
-    )
+    # D-016: varsayılan eğitilmiş RF-DETR-Seg (kapı params'tan); dosya yoksa OWLv2
+    gd = models.build_default(device=args.device, detector=args.detector)
     rng = random.Random(0)
     coco: dict[str, list[dict[str, object]]] = {
         "images": [],
@@ -86,6 +82,16 @@ def main() -> None:
                                 "image_id": img_id,
                                 "category_id": 1,
                                 "bbox": [x0 * w, y0 * h, bw, bh],
+                                # maskeden poligon; yoksa yalnız kutu
+                                **(
+                                    {
+                                        "segmentation": [
+                                            [v * (w if k % 2 == 0 else h) for k, v in enumerate(q)] for q in d.poly
+                                        ]
+                                    }
+                                    if d.poly
+                                    else {}
+                                ),
                                 "area": bw * bh,
                                 "iscrowd": 0,
                                 "score": d.score,

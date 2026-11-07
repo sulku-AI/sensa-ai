@@ -9,7 +9,7 @@ description = "Videoda kan/vahşet bölgelerini 30 sn önceden bulup hafifçe ve
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
-dependencies = ["numpy>=1.24", "pyyaml>=6.0", "opencv-python>=4.8"]
+dependencies = ["numpy>=1.24", "pyyaml>=6.0", "opencv-python>=4.8", "pillow>=10"]
 
 [project.optional-dependencies]
 dev = ["pytest>=7.4", "pytest-cov>=4.1", "ruff>=0.4", "black>=24.0", "mypy>=1.8", "types-PyYAML"]

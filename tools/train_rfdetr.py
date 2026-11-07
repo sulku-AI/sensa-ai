@@ -56,9 +56,11 @@ def hash_split(key: str) -> str:
     return "train" if u < 0.8 else "valid" if u < 0.9 else "test"
 
 
-def collect(src: list[Path], neg: list[Path]) -> list[Item]:
+def collect(src: list[Path], neg: list[Path], train_only: list[Path] | None = None) -> list[Item]:
+    """`train_only`: kendi etiketimiz (autolabel) ölçüme girmez; her kare ayrı grup, hep train."""
     items: list[Item] = []
-    for folder in src:
+    forced = {f.resolve() for f in train_only or []}
+    for folder in [*src, *(train_only or [])]:
         for ann_path in sorted(folder.rglob("_annotations.coco.json")):
             d = json.loads(ann_path.read_text())
             split = ann_path.parent.name if ann_path.parent.name in SPLITS else None
@@ -70,8 +72,11 @@ def collect(src: list[Path], neg: list[Path]) -> list[Item]:
                 )
             for img in d["images"]:
                 p = ann_path.parent / img["file_name"]
-                key = f"{folder.name}:{group_key(p)}"
-                items.append((p, img["width"], img["height"], by_img.get(img["id"], []), key, split))
+                if folder.resolve() in forced:
+                    key, sp = f"{folder.name}:{p.name}", "train"
+                else:
+                    key, sp = f"{folder.name}:{group_key(p)}", split
+                items.append((p, img["width"], img["height"], by_img.get(img["id"], []), key, sp))
     import cv2
 
     for folder in neg:
@@ -104,7 +109,7 @@ def split_items(items: list[Item], aug_per_image: int) -> dict[str, list[Item]]:
 def prepare(args: argparse.Namespace) -> None:
     from sensa_ai import safety
 
-    splits = split_items(collect(args.src, args.neg), args.aug_per_image)
+    splits = split_items(collect(args.src, args.neg, args.train_only), args.aug_per_image)
     if OUT.exists():
         shutil.rmtree(OUT)
     safety.lock_folder(OUT.parent)
@@ -176,6 +181,7 @@ def main() -> None:
     p = sub.add_parser("prepare")
     p.add_argument("--src", type=Path, nargs="+", required=True)
     p.add_argument("--neg", type=Path, nargs="*", default=[])
+    p.add_argument("--train-only", type=Path, nargs="*", default=[], help="yalnız train'e (ör. autolabel)")
     p.add_argument("--aug-per-image", type=int, default=2, help="train'de özgün görüntü başına en çok kopya")
     t = sub.add_parser("train")
     t.add_argument("--epochs", type=int, default=30)

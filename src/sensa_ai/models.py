@@ -169,7 +169,13 @@ def make_detector(name: str | None = None, device: str | None = None) -> TextDet
     """models.yaml adı, HF kimliği, `rfdetr:<yol>` ya da `.pth` yolu -> dedektör."""
     mid = resolve("detect", name.removeprefix("rfdetr:") if name else None)
     if (name or "").startswith("rfdetr:") or mid.endswith(".pth"):
-        return SegDetector.from_checkpoint(mid, device=device)
+        try:
+            return SegDetector.from_checkpoint(mid, device=device)
+        except FileNotFoundError as e:
+            if name is not None:  # açıkça istenen model yoksa hata
+                raise
+            print(f"[models] {e}; OWLv2 kullanılıyor (yavaş: --mask-track ve kapı önerilir)")
+            mid = resolve("detect", "owlv2_base")
     return TextDetector.from_pretrained(mid, device=device)
 
 
@@ -244,13 +250,7 @@ def build_default(
 ) -> GatedDetector:
     """Varsayılan hat. `use_gate` None ise params `gate.enabled`. Eğitilmiş model dosyası yoksa OWLv2'ye düşer."""
     prompts = config.load_prompts()
-    try:
-        det = make_detector(detector, device=device)
-    except FileNotFoundError as e:
-        if detector is not None:
-            raise
-        print(f"[models] {e}; OWLv2 kullanılıyor (yavaş: --mask-track ve kapı önerilir)")
-        det = make_detector("owlv2_base", device=device)
+    det = make_detector(detector, device=device)
     gate_on = bool(config.load()["gate"].get("enabled", True)) if use_gate is None else use_gate
     gate = SiglipGate.from_pretrained(device=device) if gate_on else None
     return GatedDetector(gate, det, prompts["negative"], config.load()["gate"]["threshold"])

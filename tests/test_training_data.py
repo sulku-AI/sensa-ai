@@ -38,6 +38,20 @@ def test_split_keeps_augmented_copies_together(tmp_path: Path) -> None:
     assert sum(1 for r in out["test"] if r[4].startswith("ds:")) == 30
 
 
+def test_train_only_source_goes_to_train_frame_by_frame(tmp_path: Path) -> None:
+    """Kendi etiketimiz (autolabel) ölçüme sızmaz ve tek video 2 kareye inmez."""
+    import json
+
+    from tools import train_rfdetr as tr
+
+    al = tmp_path / "autolabel"
+    al.mkdir()
+    imgs = [{"id": i + 1, "file_name": f"images/ep1_{i * 24:07d}.jpg", "width": 10, "height": 10} for i in range(40)]
+    (al / "_annotations.coco.json").write_text(json.dumps({"images": imgs, "annotations": []}))
+    out = tr.split_items(tr.collect([], [], [al]), aug_per_image=2)
+    assert len(out["train"]) == 40 and not out["valid"] and not out["test"]
+
+
 def test_pred_mask_uses_polygon_when_present() -> None:
     from sensa_ai.detect import Detection
     from tools import evaluate
@@ -128,7 +142,7 @@ def test_evaluate_end_to_end_with_sources(monkeypatch: pytest.MonkeyPatch, tmp_p
     argv = ["ev", "--pos", str(split), "--empty-as-neg", "--no-gate", "--results", str(res)]
     monkeypatch.setattr(sys, "argv", argv)
     evaluate.main()
-    out = json.loads(next(res.glob("*_eval_sahte_k0.3.json")).read_text())
+    out = json.loads(next(res.glob("*_eval_sahte_*_k0.3.json")).read_text())
     assert out["pozitif_goruntu"] == 4 and out["negatif_goruntu"] == 2
     assert out["yakalama_orani"] == 1.0 and out["negatif_yanlis_alarm_orani"] == 1.0
     assert set(out["kaynaklar"]) == {"a", "b"}
@@ -138,15 +152,15 @@ def test_evaluate_end_to_end_with_sources(monkeypatch: pytest.MonkeyPatch, tmp_p
 def test_default_falls_back_to_owlv2_and_no_tracker(monkeypatch: pytest.MonkeyPatch) -> None:
     from sensa_ai import tracking
 
-    calls: list[str | None] = []
+    seen: list[str] = []
 
-    def fake(name: str | None = None, device: str | None = None) -> object:
-        calls.append(name)
-        if name is None:
-            raise FileNotFoundError("kontrol noktası yok")
-        return object()
+    def missing(cls: object, p: str, device: str | None = None) -> None:
+        raise FileNotFoundError("kontrol noktası yok")
 
-    monkeypatch.setattr(models, "make_detector", fake)
+    monkeypatch.setattr(models.SegDetector, "from_checkpoint", classmethod(missing))
+    monkeypatch.setattr(models.TextDetector, "from_pretrained", classmethod(lambda cls, m, device=None: seen.append(m)))
     gd = models.build_default()
-    assert calls == [None, "owlv2_base"] and gd.gate is None  # D-016: kapı varsayılan kapalı
+    assert seen and seen[0].startswith("google/owlv2") and gd.gate is None  # D-016: kapı varsayılan kapalı
+    with pytest.raises(FileNotFoundError):
+        models.make_detector("rfdetr_seg")  # açıkça istenince sessizce düşmez
     assert tracking.maybe_tracker() is None  # D-016: takip varsayılan kapalı
