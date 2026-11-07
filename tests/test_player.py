@@ -37,8 +37,14 @@ def test_compositor_failsafe_then_normal() -> None:
     track = BlurTrack("a.mp4", 60.0, analyzed_until_s=3.0, tracks=[tr])
     comp = Compositor(track)
     frame = red_square_frame()
-    _, m = comp.render(frame, 1.5)
+    out, m = comp.render(frame, 1.5)
     assert m is la.Mode.FAILSAFE  # tampon 1.5 sn < safe_margin_s
+    # D-018: tam kare bulanıklık kapalı, köşe keskin kalır, bölge yine bulanık
+    assert np.array_equal(out[:5, :5], frame[:5, :5]) and not np.array_equal(out, frame)
+    comp.b = {**comp.b, "failsafe_full_frame": True}
+    out, _ = comp.render(frame, 1.5)
+    assert not np.array_equal(out[:5, :5], frame[:5, :5]) or np.ptp(frame[:5, :5]) == 0
+    comp.b = {**comp.b, "failsafe_full_frame": False}
     track.analyzed_until_s = 40.0
     out, m = comp.render(frame, 1.5)
     assert m is la.Mode.NORMAL

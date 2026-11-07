@@ -112,7 +112,7 @@ class Compositor:
 
     def render(self, frame: np.ndarray, t: float) -> tuple[np.ndarray, la.Mode]:
         m = self.mode(t)
-        if m is la.Mode.FAILSAFE:
+        if m is la.Mode.FAILSAFE and self.b.get("failsafe_full_frame", True):
             return blur.apply_full(frame, self.b["failsafe_sigma_px"]), m
         regions = self.track.active_regions(t, **blur.timing(self.b))
         mask = blur.region_mask(frame.shape[:2], regions, int(self.b["dilate_px"]), int(self.b["feather_px"]))

@@ -39,6 +39,7 @@ blur:
   ramp_out_s:          {value: 0.50, status: estimate, source: "Bölge kaybolduktan sonra yavaşça kalkar"}
   hold_factor:         {value: 1.0,  status: estimate, source: "İlk tespitten önce / son tespitten sonra tam güç tutma = hold_factor / sample_fps sn (örnekleme aralığını kapatır)"}
   failsafe_sigma_px:   {value: 10.0, status: estimate, source: "Güvenli modda tam kare hafif bulanıklık (D-007)"}
+  failsafe_full_frame: {value: false, status: target, source: "D-018 (kullanıcı): analiz yetişmeyince tüm kareyi bulanıklaştırma kapalı; yalnız bulunmuş bölgeler bulanık"}
 
 safe_preview:          # İnsan gözü için diske yazılan HER görüntü bu ayarlardan geçer (D-004)
   block_px:            {value: 16,   status: estimate, source: "Pikselleştirme blok boyutu (küçük resim üzerinde)"}

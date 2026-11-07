@@ -73,7 +73,7 @@ function fillRegion(r, w, h, dilate) {
 function draw(t) {
   const w = out.width, h = out.height, b = params.blur;
   const m = mode(bt, t, params.lookahead.safe_margin_s);
-  if (m === "failsafe") {
+  if (m === "failsafe" && b.failsafe_full_frame !== false) {
     ctx.filter = `blur(${b.failsafe_sigma_px}px)`;
     ctx.drawImage(v, 0, 0, w, h);
     ctx.filter = "none";
