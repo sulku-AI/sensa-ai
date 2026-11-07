@@ -138,15 +138,15 @@ def test_evaluate_end_to_end_with_sources(monkeypatch: pytest.MonkeyPatch, tmp_p
 def test_default_falls_back_to_owlv2_and_no_tracker(monkeypatch: pytest.MonkeyPatch) -> None:
     from sensa_ai import tracking
 
-    calls: list[str | None] = []
+    seen: list[str] = []
 
-    def fake(name: str | None = None, device: str | None = None) -> object:
-        calls.append(name)
-        if name is None:
-            raise FileNotFoundError("kontrol noktası yok")
-        return object()
+    def missing(cls: object, p: str, device: str | None = None) -> None:
+        raise FileNotFoundError("kontrol noktası yok")
 
-    monkeypatch.setattr(models, "make_detector", fake)
+    monkeypatch.setattr(models.SegDetector, "from_checkpoint", classmethod(missing))
+    monkeypatch.setattr(models.TextDetector, "from_pretrained", classmethod(lambda cls, m, device=None: seen.append(m)))
     gd = models.build_default()
-    assert calls == [None, "owlv2_base"] and gd.gate is None  # D-016: kapı varsayılan kapalı
+    assert seen and seen[0].startswith("google/owlv2") and gd.gate is None  # D-016: kapı varsayılan kapalı
+    with pytest.raises(FileNotFoundError):
+        models.make_detector("rfdetr_seg")  # açıkça istenince sessizce düşmez
     assert tracking.maybe_tracker() is None  # D-016: takip varsayılan kapalı
