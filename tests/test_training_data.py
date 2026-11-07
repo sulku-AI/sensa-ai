@@ -164,3 +164,19 @@ def test_default_falls_back_to_owlv2_and_no_tracker(monkeypatch: pytest.MonkeyPa
     with pytest.raises(FileNotFoundError):
         models.make_detector("rfdetr_seg")  # açıkça istenince sessizce düşmez
     assert tracking.maybe_tracker() is None  # D-016: takip varsayılan kapalı
+
+
+def test_relabel_events_turns_out_of_range_detections_into_negatives(tmp_path: Path) -> None:
+    from tools import relabel_events as rl
+
+    assert rl.parse_ranges("1:00-2:00, 5-6") == [(60.0, 120.0), (300.0, 360.0)]
+    imgs = [{"id": i, "file_name": f"images/ep_{i * 25:07d}.jpg", "width": 4, "height": 4} for i in (1, 2, 3, 4)]
+    anns = [
+        {"id": 1, "image_id": 1, "score": 0.9, "bbox": [0, 0, 1, 1]},  # t=1 s, aralık dışı -> negatif
+        {"id": 2, "image_id": 3, "score": 0.9, "bbox": [0, 0, 1, 1]},  # t=3 s, içeride, güçlü -> pozitif
+        {"id": 3, "image_id": 4, "score": 0.3, "bbox": [0, 0, 1, 1]},  # t=4 s, içeride, zayıf -> atılır
+    ]
+    coco, st = rl.relabel({"images": imgs, "annotations": anns}, "ep", 25.0, [(5.0, 10.0)], 0.5)
+    assert [a["id"] for a in coco["annotations"]] == [2]
+    assert st["negatif_oldu"] == 1 and st["pozitif_kaldi"] == 1 and st["atildi"] == 1
+    assert {i["id"] for i in coco["images"]} == {1, 2, 3}
