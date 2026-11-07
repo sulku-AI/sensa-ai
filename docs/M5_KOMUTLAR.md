@@ -88,10 +88,10 @@ python -m tools.web_player data/vekil/ses_demo.mp4
 - `python -m tools.audio_demo data/vekil/ses_demo.mp4`: 45 sn video üretir, sessiz ve sesli hattı karşılaştıran tabloyu yazar, `ses_demo.blurtrack.json` (sesli hat) kaydeder
 - `python -m tools.web_player data/vekil/ses_demo.mp4`: sesli hattın bulanıklığını izlersin; sessiz hat için `--track data/vekil/ses_demo.sessiz.blurtrack.json`
 
-Gerçek ses modeliyle (AST, ilk çalıştırmada ~350 MB indirir) kendi videonda:
+Gerçek ses modeliyle (CED-Base, ilk çalıştırmada ~350 MB indirir; `pip install torchaudio` gerekir) kendi videonda:
 
 ```bash
-python -m sensa_ai.pipeline analyze video.mp4 --audio ast_audioset
+python -m sensa_ai.pipeline analyze video.mp4 --audio ced_base
 ```
 
 Her aday iz için bir satır yazar: görüntü skoru, sıkıntı, mutfak, karar (TUT / bırak) ve nedeni. Ayrıntı `video.audiocue.json`'da (görüntü yok, yalnız sayı). İlk satırda `modelde olmayan sınıf adları` uyarısı çıkarsa bana yaz (adlar bulutta doğrulanamadı).
@@ -112,7 +112,7 @@ Sonuç: yanlış alarm oranı. `--previews` yanlış alarm veren negatiflerin g�
 `data/negatif/yemek/` altına birkaç yemek programı klibi koy (kızartma, doğrama, et kesme sesi olan), her biri için `data/etiket/<ad>.json` içine `{"video": "<ad>.mp4", "events": []}` yaz.
 
 ```bash
-python -m tools.eval_video data/negatif/yemek --labels data/etiket --audio ast_audioset
+python -m tools.eval_video data/negatif/yemek --labels data/etiket --audio ced_base
 ```
 
 Her video iki satır verir: `sessiz` ve `sesli`. Bakılacak sütun `olay_disi_bulanik_s_dk`: sesli satırda düşük olmalı.

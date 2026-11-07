@@ -6,7 +6,7 @@ Etiket biçimi (data/etiket/<video adı>.json), görüntü içermez; ortak video
 
     python -m tools.eval_video data/pozitif/videolar --labels data/etiket            # analiz + değerlendirme
     python -m tools.eval_video data/pozitif/videolar --labels data/etiket --tracks   # var olan .blurtrack.json
-    python -m tools.eval_video data/negatif/yemek --labels data/etiket --audio ast_audioset  # D-019
+    python -m tools.eval_video data/negatif/yemek --labels data/etiket --audio ced_base  # D-019
 
 `--audio` verilirse dedektör aday eşiğiyle çalışır ve her video iki satır yazar: `sessiz` (yalnız görüntü)
 ve `sesli` (ses ipucuyla süzülmüş). Aynı adaylardan çıktıkları için fark yalnız sesten gelir.

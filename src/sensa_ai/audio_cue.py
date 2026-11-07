@@ -10,7 +10,7 @@ Akış:
     görüntü izleri (aday eşiği daha düşük) + zaman çizgisi -> `fuse` -> tutulan izler + rapor
 
 Sınıflandırıcılar:
-    AstClassifier          AudioSet'te eğitilmiş AST (transformers, BSD-3), gerçek kullanım
+    AudioSetClassifier     AudioSet etiketleyici: varsayılan CED-Base (Apache 2.0), seçenek AST (BSD-3)
     ToneNoiseProxyClassifier  model gerektirmeyen vekil: yüksek ton = "çığlık", geniş bant gürültü = "cızırtı".
                               Gerçek ses tanıma DEĞİLDİR; yalnız boru hattı ve kansız demo içindir (D-005 gibi)
 
@@ -220,11 +220,20 @@ class ToneNoiseProxyClassifier:
         return {"vocal": vocal, "violence": 0.0, "kitchen": kitchen}
 
 
-class AstClassifier:
-    """Audio Spectrogram Transformer, AudioSet 527 sınıf (sigmoid). Grup olasılığı = gruptaki en yüksek sınıf.
+TRUSTED_REMOTE_CODE = ("mispeech/",)  # CED: modeli HF deposundaki Apache 2.0 kodla gelir (trust_remote_code)
 
-    Sınıf adları prompts.yaml `audio_vocal` / `audio_violence` / `audio_kitchen`; modelde olmayan ad
-    yüklemede uyarı olarak yazılır (adlar AudioSet ontolojisinden, bulut oturumunda doğrulanamadı).
+
+def _label_key(name: str) -> str:
+    """AudioSet adının ilk parçası, küçük harf: AST "Crying, sobbing" ve CED "Crying" aynı anahtara düşer."""
+    return name.split(",")[0].strip().lower()
+
+
+class AudioSetClassifier:
+    """AudioSet 527 sınıf etiketleyici (CED ya da AST). Grup olasılığı = gruptaki en yüksek sınıf.
+
+    Varsayılan CED-Base (D-019, `docs/SES_IPUCU.md`): AudioSet mAP 50.0, değişken uzunluk (3 sn pencere
+    10 sn'ye doldurulmaz). AST seçenek olarak kalır. Sınıf adları prompts.yaml `audio_*`; ad tam ya da
+    ilk virgüle kadar eşleşir, modelde olmayan ad yüklemede uyarı olarak yazılır.
     """
 
     rate = 16000
@@ -234,32 +243,37 @@ class AstClassifier:
 
     @staticmethod
     def group_indices(id2label: dict[int, str], names: dict[str, list[str]]) -> tuple[dict[str, list[int]], list[str]]:
-        by_name = {v.lower(): int(k) for k, v in id2label.items()}
+        by_name: dict[str, int] = {}
+        for k, v in id2label.items():
+            by_name.setdefault(v.lower(), int(k))
+            by_name.setdefault(_label_key(v), int(k))
         out, missing = {}, []
         for g in GROUPS:
             ids = []
             for n in names.get(f"audio_{g}", []):
-                if n.lower() in by_name:
-                    ids.append(by_name[n.lower()])
-                else:
+                i = by_name.get(n.lower(), by_name.get(_label_key(n)))
+                if i is None:
                     missing.append(n)
+                elif i not in ids:
+                    ids.append(i)
             out[g] = ids
         return out, missing
 
     @classmethod
-    def from_pretrained(cls, model_id: str | None = None, device: str | None = None) -> AstClassifier:
-        from transformers import ASTFeatureExtractor, ASTForAudioClassification
+    def from_pretrained(cls, model_id: str | None = None, device: str | None = None) -> AudioSetClassifier:
+        from transformers import AutoFeatureExtractor, AutoModelForAudioClassification
 
         from . import device as dev
         from .models import resolve
 
         d = dev.pick(device)
-        mid = model_id or resolve("audio")
-        model = ASTForAudioClassification.from_pretrained(mid).to(d).eval()
-        return cls.from_model(model, ASTFeatureExtractor.from_pretrained(mid), d)
+        mid = resolve("audio", model_id)
+        remote = mid.startswith(TRUSTED_REMOTE_CODE)
+        model = AutoModelForAudioClassification.from_pretrained(mid, trust_remote_code=remote).to(d).eval()
+        return cls.from_model(model, AutoFeatureExtractor.from_pretrained(mid, trust_remote_code=remote), d)
 
     @classmethod
-    def from_model(cls, model: Any, extractor: Any, device: str) -> AstClassifier:
+    def from_model(cls, model: Any, extractor: Any, device: str) -> AudioSetClassifier:
         groups, missing = cls.group_indices(model.config.id2label, config.load_prompts())
         if missing:
             print(f"[audio] modelde olmayan sınıf adları (yok sayıldı): {missing}")
@@ -271,12 +285,17 @@ class AstClassifier:
         inputs = self.extractor(wave, sampling_rate=self.rate, return_tensors="pt")
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
         with torch.no_grad():
-            probs = self.model(**inputs).logits[0].float().sigmoid().cpu().numpy()
+            out = self.model(**inputs).logits[0].float()
+        # AST ham logit verir; CED başı çoğu ayarda sigmoid'i kendisi uygular. Zaten 0..1 ise tekrar uygulama.
+        probs = (out if bool(((out >= 0) & (out <= 1)).all()) else out.sigmoid()).cpu().numpy()
         return {g: float(probs[ids].max()) if ids else 0.0 for g, ids in self.groups.items()}
+
+
+AstClassifier = AudioSetClassifier  # geriye uyumluluk
 
 
 def make_classifier(name: str | None = None, device: str | None = None) -> AudioClassifier:
     """ "proxy" -> vekil; diğerleri models.yaml `audio` adı ya da HF kimliği."""
     if name == "proxy":
         return ToneNoiseProxyClassifier(rate=int(config.load()["audio"]["rate"]))
-    return AstClassifier.from_pretrained(name, device=device)
+    return AudioSetClassifier.from_pretrained(name, device=device)

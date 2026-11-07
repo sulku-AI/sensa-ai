@@ -98,8 +98,41 @@ def test_ast_group_indices_reports_missing() -> None:
         "audio_violence": ["Gunshot, gunfire"],
         "audio_kitchen": ["frying (food)"],
     }
-    groups, missing = audio_cue.AstClassifier.group_indices(id2label, names)
+    groups, missing = audio_cue.AudioSetClassifier.group_indices(id2label, names)
     assert groups == {"vocal": [1], "violence": [3], "kitchen": [2]} and missing == ["Yell"]
+
+
+def test_group_indices_matches_ced_short_names() -> None:
+    """CED adları kısa ("Crying"), AST ve prompts.yaml tam ("Crying, sobbing"): ilk parça eşleşir."""
+    ced = {22: "Crying", 25: "Wail", 364: "Dishes", 365: "Cutlery", 427: "Gunshot"}
+    names = {
+        "audio_vocal": ["Crying, sobbing", "Wail, moan"],
+        "audio_violence": ["Gunshot, gunfire"],
+        "audio_kitchen": ["Dishes, pots, and pans", "Cutlery, silverware"],
+    }
+    groups, missing = audio_cue.AudioSetClassifier.group_indices(ced, names)
+    assert groups == {"vocal": [22, 25], "violence": [427], "kitchen": [364, 365]} and missing == []
+
+
+def test_classifier_does_not_double_sigmoid() -> None:
+    """Model zaten olasılık veriyorsa (CED) olduğu gibi, ham logit veriyorsa (AST) sigmoid."""
+    torch = pytest.importorskip("torch")
+
+    class M:
+        def __init__(self, out: list[float]) -> None:
+            self.out = torch.tensor([out])
+
+        def __call__(self, **_: object) -> object:
+            return type("O", (), {"logits": self.out})()
+
+    def ext(wave: np.ndarray, sampling_rate: int, return_tensors: str) -> dict:
+        return {"input_values": torch.zeros(1, 4)}
+
+    groups = {"vocal": [0], "violence": [1], "kitchen": [2]}
+    probs = audio_cue.AudioSetClassifier(M([0.9, 0.1, 0.0]), ext, "cpu", groups)(np.zeros(10, np.float32))
+    logits = audio_cue.AudioSetClassifier(M([2.0, -2.0, 0.0]), ext, "cpu", groups)(np.zeros(10, np.float32))
+    assert probs["vocal"] == pytest.approx(0.9)
+    assert logits["vocal"] == pytest.approx(0.8808, abs=1e-3) and logits["kitchen"] == pytest.approx(0.5)
 
 
 def test_prompts_have_audio_groups() -> None:
@@ -139,6 +172,6 @@ def test_ast_wrapper_with_tiny_random_model() -> None:
     )
     model = tf.ASTForAudioClassification(cfg).eval()
     ext = tf.ASTFeatureExtractor(max_length=128)
-    clf = audio_cue.AstClassifier.from_model(model, ext, "cpu")
+    clf = audio_cue.AudioSetClassifier.from_model(model, ext, "cpu")
     p = clf(_tone(1.0))
     assert set(p) == set(audio_cue.GROUPS) and all(0.0 <= v <= 1.0 for v in p.values())

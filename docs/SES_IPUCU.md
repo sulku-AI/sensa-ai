@@ -27,22 +27,32 @@ Vekil demo sonucu: `experiments/results/2026-11-07_ses_ipucu_vekil_demo.md` (be�
 
 ## Model
 
-**AST** (Audio Spectrogram Transformer), AudioSet 527 sınıf: `MIT/ast-finetuned-audioset-10-10-0.4593`, BSD-3-Clause, transformers içinde (yeni bağımlılık yok). ~87M parametre. Grup olasılığı = gruptaki sınıfların en yükseği; gruplar `config/prompts.yaml` → `audio_vocal`, `audio_violence`, `audio_kitchen`.
+Varsayılan **CED-Base** (`mispeech/ced-base`, Xiaomi). 2026-11-07'de güncel açık modeller karşılaştırıldı (Emirhan'ın isteği: "bulabileceğin en iyi model"):
 
-| Aday | Lisans | Neden şimdi değil |
-|---|---|---|
-| AST AudioSet | BSD-3 | **seçildi**: transformers, MPS, sınıflar hazır |
-| PANNs CNN14 | MIT kod, ağırlık CC BY 4.0 | ayrı paket; AST'den belirgin üstün değil |
-| BEATs | MIT | transformers'ta yok, ağırlıklar ayrı indirilir |
-| YAMNet | Apache 2.0 | TensorFlow bağımlılığı |
-| EfficientAT (MobileNet) | MIT | çok hızlı; AST yavaş kalırsa ilk yedek |
-| CLAP (LAION) | Apache 2.0 | metinle sıfır atış ("bir insan acıyla çığlık atıyor"); sınıflar yetmezse denenir |
+| Model | AudioSet mAP | Parametre | Lisans (kod / ağırlık) | Bizim için |
+|---|---|---|---|---|
+| **CED-Base** | **50.0** | 86M | HF kodu Apache 2.0 (dosya başlıkları), ağırlık Apache 2.0 | **seçildi**: en yüksek doğrulanmış mAP; değişken uzunluk (3 sn pencere doldurulmaz); 10 sn başına 248 yama (AST 1212): aynı boyda daha hızlı |
+| CED-Small | 49.6 | 22M | aynı | M5'te CED-Base yavaş kalırsa: `--audio ced_small` |
+| EAT-large / base | 49.5 / 48.9 | 309M / 88M | kod MIT, ağırlık lisansı yazmıyor | lisans belirsiz, şimdilik değil |
+| EfficientAT (MN ensemble / dymn20) | 49.8 / 49.1 | toplam / 40M | kod MIT, ağırlık lisansı yazmıyor; transformers dışı | lisans belirsiz |
+| BEATs iter3 | 48.0 | 90M | sayfa okunamadı | doğrulanamadı |
+| AST (`MIT/ast-finetuned-audioset-10-10-0.4593`) | 45.9 (tek model) | 87M | BSD-3 | seçenek: `--audio ast_audioset`; özel kod gerektirmez |
+| Dasheng | (sınıflandırıcı yok) | 86M-1.2B | Apache 2.0 | yalnız gömme, 527 sınıf başı yok |
 
-Hız: saniyede bir pencere (`hop_s`), 3 sn pencere AST'nin 10.24 sn girdisine sıfırla doldurulur. M5'te ölçülmedi; görüntü hattı (6 örnek/sn × 25 ms) yanında ek yük beklenir. Ses bütün dosya için en başta da çıkarılabilir (ses çözmek görüntüden çok ucuz).
+Kaynaklar: model kartları ve depolar (huggingface.co/mispeech/ced-base, ced-small, MIT/ast-…, github.com/cwx-worst-one/EAT, github.com/fschmid56/EfficientAT), codesota.com AudioSet tablosu. mAP'ler farklı makalelerden; ±0.005 fark eşit sayılmalı. Hiçbiri bizim tarafımızdan ölçülmedi.
+
+Notlar:
+- CED'in GitHub deposu (RicherMans/CED) **GPL-3.0**; biz onu kullanmıyoruz. Hugging Face deposundaki `modeling_ced.py` ve `feature_extraction_ced.py` Apache 2.0 başlıklı; yalnız bunlar `trust_remote_code` ile yüklenir ve bu yalnız `mispeech/` kimlikleri için açılır (`audio_cue.TRUSTED_REMOTE_CODE`). Ek bağımlılık: `torchaudio`.
+- CED sınıf adları kısa ("Crying", "Dishes"), AST tam ("Crying, sobbing"). Eşleştirme ilk virgüle kadar yapılır; prompts.yaml tam adları tutar.
+- CED başı sigmoid'i kendisi uygulayabiliyor (doğrulanmadı); çıktı zaten 0..1 ise tekrar uygulanmaz.
+
+Grup olasılığı = gruptaki sınıfların en yükseği; gruplar `config/prompts.yaml` → `audio_vocal`, `audio_violence`, `audio_kitchen`.
+
+Hız: saniyede bir pencere (`hop_s`), 3 sn pencere. M5'te ölçülmedi.
 
 ## Bilinen sınırlar
 
-- Sınıf adları AudioSet ontolojisinden yazıldı, bulut oturumunda Hugging Face kapalı olduğu için modelin `id2label`'i ile doğrulanmadı. Modelde olmayan ad yüklemede uyarı olarak yazılır.
+- Sınıf adları AST'nin `id2label`'i ile web üzerinden karşılaştırıldı (hepsi var); CED'de 0-386 arası doğrulandı, üstü (silah, kırılma, Sizzle) yerel yüklemede kontrol edilecek. Modelde olmayan ad yüklemede uyarı olarak yazılır.
 - Dizi müziği çığlığı bastırabilir; dublajlı içerikte efekt sesi kısık olabilir.
 - Gerçek eşikler (`distress_full_at`, `kitchen_full_at`, boost, ceza) tahmin. Ayar H-07 ölçümüyle (yemek klipleri Emirhan, dizi sahneleri ortak).
 - Canlı oynatıcıya (`sensa_ai.player`) henüz bağlı değil: demo çevrimdışı hatta (`analyze --audio`) ve onun ürettiği iz ile tarayıcı oynatıcısında çalışır.

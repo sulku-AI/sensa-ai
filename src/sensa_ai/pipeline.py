@@ -158,9 +158,7 @@ def main(argv: list[str] | None = None) -> None:
     a.add_argument("--device", default=None)
     a.add_argument("--detector", default=None, help="models.yaml detect adı (ör. rfdetr_seg) ya da .pth yolu")
     a.add_argument("--no-gate", action="store_true", help="SigLIP kapısını kapat (eğitilmiş modelde önerilen)")
-    a.add_argument(
-        "--audio", default=None, help="ses ipucu (D-019): proxy ya da models.yaml audio adı (ör. ast_audioset)"
-    )
+    a.add_argument("--audio", default=None, help="ses ipucu (D-019): proxy ya da models.yaml audio adı (ör. ced_base)")
     r = sub.add_parser("render")
     r.add_argument("video", type=Path)
     r.add_argument("track", type=Path)

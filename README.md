@@ -70,4 +70,4 @@ archive/                  eski Faster R-CNN kodu, değiştirilmeden
 
 ## Lisans
 
-MIT. Kullanılan modeller (SigLIP, LLMDet, Grounding DINO, OWLv2, SAM 2.1, EdgeTAM, RF-DETR-Seg) Apache 2.0; ses ipucu modeli AST (AudioSet) BSD-3.
+MIT. Kullanılan modeller (SigLIP, LLMDet, Grounding DINO, OWLv2, SAM 2.1, EdgeTAM, RF-DETR-Seg) Apache 2.0; ses ipucu modeli CED-Base Apache 2.0 (seçenek AST, BSD-3).
