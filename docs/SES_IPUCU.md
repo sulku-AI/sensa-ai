@@ -55,5 +55,6 @@ Hız: saniyede bir pencere (`hop_s`), 3 sn pencere. M5'te ölçülmedi.
 - Sınıf adları AST'nin `id2label`'i ile web üzerinden karşılaştırıldı (hepsi var); CED'de 0-386 arası doğrulandı, üstü (silah, kırılma, Sizzle) yerel yüklemede kontrol edilecek. Modelde olmayan ad yüklemede uyarı olarak yazılır.
 - Dizi müziği çığlığı bastırabilir; dublajlı içerikte efekt sesi kısık olabilir.
 - Gerçek eşikler (`distress_full_at`, `kitchen_full_at`, boost, ceza) tahmin. Ayar H-07 ölçümüyle (yemek klipleri Emirhan, dizi sahneleri ortak).
-- Canlı oynatıcıya (`sensa_ai.player`) henüz bağlı değil: demo çevrimdışı hatta (`analyze --audio`) ve onun ürettiği iz ile tarayıcı oynatıcısında çalışır.
+- Canlı oynatıcıda (`sensa_ai.player --audio`) ses ayrı bir iş parçacığında oynatma kafasının önünü dinler (`audio_cue.LiveAudioAnalyzer`), bulanıklık her karede sesle süzülür. Ses o aralık için henüz analiz edilmediyse iz sessiz hat kuralıyla gösterilir: ses gecikmesi bulanıklığı hiçbir zaman kaldırmaz. Tarayıcı oynatıcısı yalnız çevrimdışı izle (`analyze --audio`) çalışır.
+- Ses yalnız **mutfak** bağlamında yanlış alarmı azaltır. Mutfak dışındaki kırmızılarda (boya, ışık, kıyafet) yardımı yok; çığlıksız kan sahneleri (ör. sessiz olay yeri) çok olduğu için "çığlık yoksa bastır" kuralı bilerek konmadı (D-001). Bu yanlış alarmların çözümü görüntü modelinin dizi kareleriyle eğitimi.
 - Ses saklama: yalnız sayılar (`.audiocue.json`) yazılır, ses kaydı ya da kesit yazılmaz.

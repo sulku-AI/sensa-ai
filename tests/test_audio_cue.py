@@ -175,3 +175,41 @@ def test_ast_wrapper_with_tiny_random_model() -> None:
     clf = audio_cue.AudioSetClassifier.from_model(model, ext, "cpu")
     p = clf(_tone(1.0))
     assert set(p) == set(audio_cue.GROUPS) and all(0.0 <= v <= 1.0 for v in p.values())
+
+
+def test_live_filter_falls_back_to_visual_before_audio() -> None:
+    """Ses henüz analiz edilmediyse iz sessiz hat kuralıyla kalır: ses gecikmesi bulanıklığı kaldırmaz."""
+    live = audio_cue.LiveAudioAnalyzer(Path("yok.mp4"), ToneNoiseProxyClassifier(RATE), duration_s=20)
+    bt = BlurTrack("v", 20, 20, [_track(5, 7, 0.45), _track(5, 7, 0.2)])
+    kept = live.filtered(bt, 6.0)
+    assert [max(k.score for k in t.keyframes) for t in kept.tracks] == [0.45]
+    for k in range(live.n):  # mutfak sesi gelince orta iz düşer
+        live.windows[k] = AudioWindow(k * live.hop_s, k * live.hop_s + live.window_s, 0.0, 0.0, 1.0)
+    assert live.filtered(bt, 6.0).tracks == []
+    assert live.filtered(bt, 15.0).tracks == []  # uzak iz hiç hesaplanmaz
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg yok")
+def test_live_matches_offline_on_demo(tmp_path: Path) -> None:
+    """Oynatıcıdaki canlı ses analizi, çevrimdışı birleştirmeyle aynı izleri tutar."""
+    from sensa_ai import pipeline
+    from sensa_ai.detect import ColorProxyDetector
+    from sensa_ai.player import Compositor
+    from tools import audio_demo
+
+    video, _ = audio_demo.make(tmp_path / "ses_demo.mp4")
+    a = config.load()["audio"]
+    cand = pipeline.analyze(video, ColorProxyDetector(scored=True, min_score=a["candidate_threshold"]), ["x"])
+    offline, _, _ = audio_cue.run(video, cand, ToneNoiseProxyClassifier(RATE))
+    live = audio_cue.LiveAudioAnalyzer(video, ToneNoiseProxyClassifier(RATE), cand.duration_s, ahead_s=1e9)
+    while live.step():
+        pass
+    starts = {round(t.start, 2) for t in offline.tracks}
+    live_starts = {round(t.start, 2) for c in cand.tracks for t in live.filtered(cand, (c.start + c.end) / 2).tracks}
+    assert live_starts == starts and len(starts) == 3
+    comp = Compositor(cand, live)
+    frame = np.random.default_rng(0).integers(0, 255, (360, 640, 3), dtype=np.uint8)
+    t_kitchen = audio_demo.scene_start(2) + 3.0  # yemek sahnesi: aday var ama bulanıklık yok
+    t_scream = audio_demo.scene_start(0) + 3.0  # zayıf görüntü + çığlık: bulanık
+    assert (comp.render(frame, t_kitchen)[0] == frame).all()
+    assert not (comp.render(frame, t_scream)[0] == frame).all()

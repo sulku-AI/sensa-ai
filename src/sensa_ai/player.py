@@ -3,6 +3,7 @@
     python -m sensa_ai.player film.mp4 --proxy        # modelsiz vekil (kırmızı alanlar)
     python -m sensa_ai.player film.mp4                # gerçek modeller (M5'te MPS)
     python -m sensa_ai.player film.mp4 --track film.blurtrack.json   # önceden üretilmiş iz
+    python -m sensa_ai.player film.mp4 --profile guclu --audio       # görüntü + ses birlikte (D-019, CED)
 
 Tuşlar: boşluk = duraklat, ← / → = 10 sn geri / ileri, b ya da Esc = anında siyah ekran
 (aç/kapa, ses kısılmaz; duraklatmaz), q = çık.
@@ -21,6 +22,7 @@ import subprocess
 import threading
 import time
 from pathlib import Path
+from typing import Any
 
 import cv2
 import numpy as np
@@ -102,9 +104,9 @@ class Analyzer(threading.Thread):
 class Compositor:
     """Bir karede ne gösterileceğine karar verir (saf mantık, test edilebilir)."""
 
-    def __init__(self, track: BlurTrack) -> None:
+    def __init__(self, track: BlurTrack, audio: Any = None) -> None:
         p = config.load()
-        self.track = track
+        self.track, self.audio = track, audio  # audio: audio_cue.LiveAudioAnalyzer (D-019) ya da None
         self.b = p["blur"]
         self.safe_margin_s = float(p["lookahead"]["safe_margin_s"])
 
@@ -115,7 +117,8 @@ class Compositor:
         m = self.mode(t)
         if m is la.Mode.FAILSAFE and self.b.get("failsafe_full_frame", True):
             return blur.apply_full(frame, self.b["failsafe_sigma_px"]), m
-        regions = self.track.active_regions(t, **blur.timing(self.b))
+        bt = self.audio.filtered(self.track, t) if self.audio is not None else self.track
+        regions = bt.active_regions(t, **blur.timing(self.b))
         mask = blur.region_mask(frame.shape[:2], regions, int(self.b["dilate_px"]), int(self.b["feather_px"]))
         return blur.apply(frame, mask, self.b["sigma_px"]), m
 
@@ -148,13 +151,20 @@ def play(
     track_file: Path | None = None,
     tracker: Tracker | None = None,
     use_av_audio: bool = True,
+    audio_clf: Any = None,
 ) -> None:
     cap = cv2.VideoCapture(str(video))
     fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
     duration = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) / fps
     track = BlurTrack.load(track_file) if track_file else BlurTrack(video.name, duration)
     analyzer = Analyzer(video, detector, prompts, track, tracker) if detector else None
-    comp = Compositor(track)
+    listener = None
+    if audio_clf is not None:
+        from .audio_cue import LiveAudioAnalyzer
+
+        listener = LiveAudioAnalyzer(video, audio_clf, duration)
+        listener.start()
+    comp = Compositor(track, listener)
     if analyzer:
         analyzer.start()
         # açılışta tamponun dolmasını bekle (en çok safe_margin_s kadar analiz)
@@ -177,6 +187,8 @@ def play(
             break
         if analyzer:
             analyzer.set_playhead(pos)
+        if listener:
+            listener.set_playhead(pos)
         cap.set(cv2.CAP_PROP_POS_MSEC, pos * 1000) if abs(cap.get(cv2.CAP_PROP_POS_MSEC) / 1000 - pos) > 0.5 else None
         while cap.get(cv2.CAP_PROP_POS_MSEC) / 1000 < pos - 1.5 / fps and cap.grab():
             pass  # saat ilerideyse geciken kareleri atla
@@ -209,6 +221,8 @@ def play(
     audio.stop() if audio else None
     if analyzer:
         analyzer.stop_event.set()
+    if listener:
+        listener.stop_event.set()
     cap.release()
     cv2.destroyAllWindows()
 
@@ -222,19 +236,37 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--no-track", action="store_true", help="maske takibini kapat")
     ap.add_argument("--mask-track", action="store_true", help="maske takibini aç (OWLv2 ile önerilir)")
     ap.add_argument("--profile", default=None, help="hassasiyet: hafif / orta / guclu (params.yaml)")
+    ap.add_argument(
+        "--audio",
+        nargs="?",
+        const="default",
+        default=None,
+        help="ses ipucu (D-019): görüntü + ses birlikte; ad yoksa CED-Base, proxy = vekil",
+    )
     args = ap.parse_args(argv)
     config.set_profile(args.profile)
     prompts = config.load_prompts()
+    clf = None
+    cand = None
+    if args.audio:
+        from . import audio_cue
+
+        clf = audio_cue.make_classifier(None if args.audio == "default" else args.audio, device=args.device)
+        cand = float(config.load()["audio"]["candidate_threshold"])
     if args.track:
-        play(args.video, None, [], args.track)
+        play(args.video, None, [], args.track, audio_clf=clf)
     elif args.proxy:
-        play(args.video, ColorProxyDetector(), prompts["proxy"])
+        det = ColorProxyDetector(scored=True, min_score=cand) if cand is not None else ColorProxyDetector()
+        play(args.video, det, prompts["proxy"], audio_clf=clf)
     else:
         from . import models
         from .tracking import maybe_tracker
 
         tracker = maybe_tracker(args.device, False if args.no_track else True if args.mask_track else None)
-        play(args.video, models.build_default(device=args.device), prompts["positive"], tracker=tracker)
+        gd = models.build_default(device=args.device)
+        if cand is not None and isinstance(gd.detector, models.SegDetector):
+            gd.detector.box_threshold = cand  # ses desteği düşük skorlu adayı kurtarabilsin
+        play(args.video, gd, prompts["positive"], tracker=tracker, audio_clf=clf)
 
 
 if __name__ == "__main__":

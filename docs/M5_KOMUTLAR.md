@@ -88,7 +88,15 @@ python -m tools.web_player data/vekil/ses_demo.mp4
 - `python -m tools.audio_demo data/vekil/ses_demo.mp4`: 45 sn video üretir, sessiz ve sesli hattı karşılaştıran tabloyu yazar, `ses_demo.blurtrack.json` (sesli hat) kaydeder
 - `python -m tools.web_player data/vekil/ses_demo.mp4`: sesli hattın bulanıklığını izlersin; sessiz hat için `--track data/vekil/ses_demo.sessiz.blurtrack.json`
 
-Gerçek ses modeliyle (CED-Base, ilk çalıştırmada ~350 MB indirir; `pip install torchaudio` gerekir) kendi videonda:
+Oynatıcıda görüntü + ses birlikte (dizi bölümü için, tek komut):
+
+```bash
+python -m sensa_ai.player bolum.mp4 --profile guclu --audio
+```
+
+Kansız denemek için: `python -m sensa_ai.player data/vekil/ses_demo.mp4 --proxy --audio proxy`.
+
+Çevrimdışı iz için gerçek ses modeliyle (CED-Base, ilk çalıştırmada ~350 MB indirir; `pip install torchaudio` gerekir) kendi videonda:
 
 ```bash
 python -m sensa_ai.pipeline analyze video.mp4 --audio ced_base

@@ -22,6 +22,8 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import threading
+import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
@@ -182,6 +184,110 @@ def without_audio(bt: BlurTrack, keep_threshold: float) -> BlurTrack:
     """Karşılaştırma için sessiz hat: yalnız görüntü skoru >= eşik olan izler."""
     kept = [tr for tr in bt.tracks if tr.keyframes and max(k.score for k in tr.keyframes) >= keep_threshold]
     return BlurTrack(bt.video, bt.duration_s, bt.analyzed_until_s, kept)
+
+
+# ---------------------------------------------------------------- canlı oynatıcı (player --audio)
+
+
+def load_segment(video: Path, t0: float, dur: float, rate: int = 16000) -> np.ndarray:
+    """[t0, t0 + dur) aralığının sesi, mono float32 (ffmpeg). ffmpeg yoksa bütün ses okunup kesilir."""
+    ff = shutil.which("ffmpeg")
+    if ff:
+        cmd = [ff, "-v", "error", "-ss", f"{max(0.0, t0):.3f}", "-t", f"{dur:.3f}", "-i", str(video)]
+        cmd += ["-vn", "-ac", "1", "-ar", str(rate), "-f", "f32le", "-"]
+        r = subprocess.run(cmd, capture_output=True, check=False)  # noqa: S603
+        if r.returncode == 0:
+            return np.frombuffer(r.stdout, np.float32).copy()
+    w = load_mono(video, rate)
+    return w[int(t0 * rate) : int((t0 + dur) * rate)]
+
+
+class LiveAudioAnalyzer(threading.Thread):
+    """Oynatıcıda görüntü analizinin yanında koşar: oynatma kafasının önündeki sesi pencere pencere sınıflandırır.
+
+    Pencere k = [k*hop, k*hop + window). Ses çözmek ve sınıflandırmak görüntüden ucuz olduğu için
+    bu iş parçacığı genelde görüntünün önünde kalır. Ses henüz yoksa `filtered` o izi sessiz hat
+    kuralıyla verir (görüntü >= keep_threshold), yani ses gecikmesi hiçbir zaman bulanıklığı kaldırmaz.
+    """
+
+    def __init__(self, video: Path, clf: AudioClassifier, duration_s: float, ahead_s: float | None = None) -> None:
+        super().__init__(daemon=True)
+        a = config.load()["audio"]
+        self.video, self.clf, self.duration_s = video, clf, duration_s
+        self.a = a
+        self.window_s, self.hop_s = float(a["window_s"]), float(a["hop_s"])
+        self.ahead_s = (
+            ahead_s if ahead_s is not None else float(config.load()["lookahead"]["window_s"]) + 2 * float(a["pad_s"])
+        )
+        self.block = 10  # bir ffmpeg çağrısında çözülen pencere sayısı
+        self.n = max(1, int(np.ceil(duration_s / self.hop_s)))
+        self.windows: dict[int, AudioWindow] = {}
+        self.lock = threading.Lock()
+        self.playhead_s = 0.0
+        self.stop_event = threading.Event()
+
+    def set_playhead(self, t: float) -> None:
+        with self.lock:
+            self.playhead_s = t
+
+    def _next_missing(self) -> int | None:
+        with self.lock:
+            k0 = max(0, int((self.playhead_s - float(self.a["pad_s"])) // self.hop_s))
+            k1 = min(self.n, int((self.playhead_s + self.ahead_s) // self.hop_s) + 1)
+            return next((k for k in range(k0, k1) if k not in self.windows), None)
+
+    def step(self) -> bool:
+        """Bir blok analiz eder. Yapacak iş yoksa False (testler iş parçacığı olmadan çağırır)."""
+        k = self._next_missing()
+        if k is None:
+            return False
+        ks = [j for j in range(k, min(self.n, k + self.block)) if j not in self.windows]
+        t0 = ks[0] * self.hop_s
+        wave = load_segment(self.video, t0, (ks[-1] - ks[0]) * self.hop_s + self.window_s, self.clf.rate)
+        n = int(self.window_s * self.clf.rate)
+        for j in ks:
+            s = int((j * self.hop_s - t0) * self.clf.rate)
+            seg = wave[s : s + n]
+            seg = np.pad(seg, (0, n - seg.size)) if seg.size < n else seg
+            p = self.clf(seg)
+            w = AudioWindow(j * self.hop_s, j * self.hop_s + self.window_s, p["vocal"], p["violence"], p["kitchen"])
+            with self.lock:
+                self.windows[j] = w
+        return True
+
+    def run(self) -> None:
+        while not self.stop_event.is_set():
+            if not self.step():
+                time.sleep(0.05)
+
+    def covered(self, a: float, b: float) -> bool:
+        """[a, b] aralığının bütün pencereleri analiz edildi mi."""
+        k0, k1 = max(0, int(a // self.hop_s)), min(self.n - 1, int(b // self.hop_s))
+        with self.lock:
+            return all(k in self.windows for k in range(k0, k1 + 1))
+
+    def timeline(self, a: float, b: float) -> AudioTimeline:
+        k0 = max(0, int((a - self.window_s) // self.hop_s))
+        k1 = int(b // self.hop_s) + 1
+        with self.lock:
+            return AudioTimeline([self.windows[k] for k in range(k0, k1 + 1) if k in self.windows])
+
+    def filtered(self, bt: BlurTrack, t: float, margin_s: float = 3.0) -> BlurTrack:
+        """t anına yakın izlerden sesle tutulanlar (bulanıklık hesabı yalnız bunlara bakar)."""
+        pad, keep_t = float(self.a["pad_s"]), float(self.a["keep_threshold"])
+        kept = []
+        for tr in list(bt.tracks):
+            kf = list(tr.keyframes)
+            if not kf or t < kf[0].t - margin_s or t > kf[-1].t + margin_s:
+                continue
+            lo, hi = kf[0].t - pad, kf[-1].t + pad
+            if self.covered(max(0.0, lo), min(self.duration_s, hi)):
+                keep = decide(Track(tr.label, kf), self.timeline(lo, hi), self.a).keep
+            else:
+                keep = max(k.score for k in kf) >= keep_t  # ses henüz yok: sessiz hat
+            if keep:
+                kept.append(tr)
+        return BlurTrack(bt.video, bt.duration_s, bt.analyzed_until_s, kept)
 
 
 def save_report(path: Path, tl: AudioTimeline, decisions: list[TrackDecision], model: str) -> None:
