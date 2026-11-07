@@ -65,4 +65,5 @@ profiles:              # M4 hassasiyet profilleri: seçilen profil yukarıdaki d
     blur.dilate_px:        {value: 28,   status: estimate, source: "M4"}
     blur.ramp_in_s:        {value: 0.80, status: estimate, source: "M4"}
     gate.threshold:        {value: 0.15, status: estimate, source: "M4"}
+    detect.seg_threshold:  {value: 0.20, status: estimate, source: "guclu: RF-DETR esiği 0.30 -> 0.20, ölçülmedi"}
     detect.box_threshold:  {value: 0.18, status: estimate, source: "M4"}
