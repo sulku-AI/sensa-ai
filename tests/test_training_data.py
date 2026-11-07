@@ -128,7 +128,7 @@ def test_evaluate_end_to_end_with_sources(monkeypatch: pytest.MonkeyPatch, tmp_p
     argv = ["ev", "--pos", str(split), "--empty-as-neg", "--no-gate", "--results", str(res)]
     monkeypatch.setattr(sys, "argv", argv)
     evaluate.main()
-    out = json.loads(next(res.glob("*_eval_sahte_k0.3.json")).read_text())
+    out = json.loads(next(res.glob("*_eval_sahte_*_k0.3.json")).read_text())
     assert out["pozitif_goruntu"] == 4 and out["negatif_goruntu"] == 2
     assert out["yakalama_orani"] == 1.0 and out["negatif_yanlis_alarm_orani"] == 1.0
     assert set(out["kaynaklar"]) == {"a", "b"}
