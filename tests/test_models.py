@@ -95,6 +95,7 @@ def test_mask_to_box() -> None:
 
 
 def test_resolve_ids() -> None:
-    assert models.resolve("detect") == "google/owlv2-base-patch16-ensemble"  # D-014
+    assert models.resolve("detect").endswith(".pth")  # D-016: kendi eğitimimiz
+    assert models.resolve("audio") == "MIT/ast-finetuned-audioset-10-10-0.4593"  # D-019
     assert models.resolve("detect", "owlv2_base").startswith("google/owlv2")
     assert models.resolve("detect", "x/y") == "x/y"
