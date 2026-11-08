@@ -136,10 +136,10 @@ def test_autolabel_negative_mode_writes_unlabeled_frames(
     data = patched / "data"
     monkeypatch.setattr(safety, "DATA_ROOT", data)
     monkeypatch.setattr(autolabel, "ROOT", patched)
-    vids = data / "negatif" / "videolar"
+    vids = data / "kansiz_videolar"
     vids.mkdir(parents=True)
     (vids / "n.mp4").write_bytes(proxy_video.read_bytes())
-    out = data / "negatif" / "video_zor"
+    out = data / "pozitif" / "kansiz_zor"  # ham kare yalnız kilitli pozitif altına
     argv = ["al", str(vids), "--out", str(out), "--fps", "2", "--min-score", "0", "--negative", "--keep-empty", "1"]
     monkeypatch.setattr(sys, "argv", argv)
     original = safety.write_dataset_frame

@@ -51,10 +51,11 @@ Kan içermediği bilinen bir dizi ya da film (yasal kopya) en temiz veridir: mod
 her kare yanlıştır, insan hiçbir şey işaretlemez.
 
 ```bash
-python -m tools.autolabel data/negatif/videolar --out data/negatif/video_zor --negative --min-score 0.2
+python -m tools.autolabel data/kansiz_videolar --out data/pozitif/kansiz_zor --negative --min-score 0.2
 ```
 
-Eğitimde `--neg data/negatif/video_zor` ile verilir. Bir videonun bütün kareleri aynı bölüme düşer
+Kareler kilitli `data/pozitif/` altına yazılır: video "kansız" denmiş olsa da modelin kan sandığı
+kareler bunlar, kimse açmaz. Eğitimde `--neg data/pozitif/kansiz_zor` ile verilir. Bir videonun bütün kareleri aynı bölüme düşer
 (sızıntı yok) ve kopya sınırı video karelerine uygulanmaz.
 
 ## Neden bu sıra
