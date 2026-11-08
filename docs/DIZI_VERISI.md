@@ -92,3 +92,6 @@ kareler bunlar, kimse açmaz. Eğitimde `--neg data/pozitif/kansiz_zor` ile veri
 Önce ölçüm: hangi modelin daha iyi olduğunu tahminle değil, aynı bölümde dakikada yanlış alarm sayısıyla
 söyleyebilmek için. Sonra eğitim: model tam yanıldığı sahnelerden öğrenir. Ses ipucu (D-019) bunun
 üstüne ikinci bir süzgeçtir, veri düzeltmesinin yerini tutmaz.
+
+Eğitim Colab yerine Linux PC'de: [PC_EGITIM.md](PC_EGITIM.md). Autolabel çıktısı bölüm başına
+`data/pozitif/autolabel/<bölüm>/` alt klasöründe; prepare hepsini birlikte okur.

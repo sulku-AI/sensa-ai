@@ -6,6 +6,8 @@
 hatta yük olan yerleri hızlandırmak. Sürüm numarası kullanıcının isteğiyle (D-021).
 
 **Yeni**
+- `tools/pc_egit.sh` ve [docs/PC_EGITIM.md](docs/PC_EGITIM.md): Linux PC'de (RTX 2060) gece boyu eğitim,
+  kopmada `last.ckpt`'ten devam, isteğe bağlı kapanma.
 - `tools/flag_timeline`: modelin bir videoda nerede "kan" dediğini dakika dakika sayar, `--judge` ile
   bağımsız ikinci görüş (SigLIP, OWLv2) alıp aday kan dakikaları önerir, birden çok
   modeli aynı karelerde karşılaştırır; gerçek kan dakikaları verilirse dizide dakikada yanlış alarm
