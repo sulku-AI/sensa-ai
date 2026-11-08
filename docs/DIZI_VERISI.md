@@ -68,8 +68,10 @@ COPYFILE_DISABLE=1 tar -cf autolabel.tar data/pozitif/autolabel
   kare, tek bölüm eğitimi boğmasın. Aralık içinde yalnız güçlü tespitler (skor ≥ 0.5) kan olarak kalır.
   Belirsiz aralıktaki kareler atılır. Tekrar çalıştırmak güvenli: hep özgün dosyadan uygulanır.
 
-`autolabel.tar` Drive'da `sensa_ai/` klasörüne konur, Colab defterinde `DIZI = True` ile eğitime girer
-(yalnız train'e; ölçüme girmez). Eğitim hazırlığı (`prepare --train-only`) `relabel_events`'ten geçmemiş
+`autolabel.tar` Drive'da `sensa_ai/` klasörüne konur (eski paketin yerine; Drive boyutu MiB gösterir, 119 MB'lık
+dosya ~113 MB görünür), Colab defterinde `DIZI = True` ile eğitime girer (yalnız train'e; ölçüme girmez).
+Defter açtığı paketin boyutunu ve hangi videoların düzeltildiğini yazar. Mac tar'ının eklediği
+`LIBARCHIVE.xattr` notları zararsızdır. Eğitim hazırlığı (`prepare --train-only`) `relabel_events`'ten geçmemiş
 bir videonun karelerini reddeder: ham etiketler modelin kırmızı yanlışlarını içerir (FA-04).
 
 ## 3. Kansız video varsa: zor negatif madenciliği
