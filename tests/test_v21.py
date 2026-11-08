@@ -94,3 +94,20 @@ def test_negative_video_frames_stay_in_one_split_and_are_not_capped(tmp_path: Pa
             where.setdefault(r[4], set()).add(split)
     assert len(where) == 12 and all(len(s) == 1 for s in where.values())  # video başına tek bölüm
     assert sum(len(r) for r in out.values()) == 72  # kopya sınırı (2) video karelerine uygulanmaz
+
+
+def test_judges_run_only_on_flagged_samples_and_suggest_minutes(proxy_video: Path) -> None:
+    from sensa_ai.detect import ColorProxyDetector, Detection
+    from tools import flag_timeline as ft
+
+    calls = []
+
+    def judge(frame, prompts):  # type: ignore[no-untyped-def]
+        calls.append(1)
+        return [Detection("kare", (0.0, 0.0, 1.0, 1.0), 0.9)]
+
+    times, scores, _ = ft.sample_flags(proxy_video, [ColorProxyDetector()], 2.0, 0.5, ["red"], [judge])
+    assert len(calls) == 4  # yalnız ilk dedektörün işaretlediği 4 anda
+    assert [s > 0 for s in scores[1]] == [s > 0 for s in scores[0]]
+    assert ft.candidate_ranges([0, 6, 9, 0, 2, 7], 5) == "1-3,5-6"
+    assert ft.candidate_ranges([0, 0], 5) == ""

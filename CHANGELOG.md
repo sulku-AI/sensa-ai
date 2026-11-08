@@ -6,7 +6,8 @@
 hatta yük olan yerleri hızlandırmak. Sürüm numarası kullanıcının isteğiyle (D-021).
 
 **Yeni**
-- `tools/flag_timeline`: modelin bir videoda nerede "kan" dediğini dakika dakika sayar, birden çok
+- `tools/flag_timeline`: modelin bir videoda nerede "kan" dediğini dakika dakika sayar, `--judge` ile
+  bağımsız ikinci görüş (SigLIP, OWLv2) alıp aday kan dakikaları önerir, birden çok
   modeli aynı karelerde karşılaştırır; gerçek kan dakikaları verilirse dizide dakikada yanlış alarm
   ölçer. Görüntü yazmaz ([docs/DIZI_VERISI.md](docs/DIZI_VERISI.md)).
 - `tools/relabel_events`: autolabel etiketlerini kabaca bilinen gerçek kan dakikalarıyla düzeltir;
