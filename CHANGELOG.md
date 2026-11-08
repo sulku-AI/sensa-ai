@@ -40,8 +40,9 @@ hatta yük olan yerleri hızlandırmak. Sürüm numarası kullanıcının isteğ
 
 **Bilinen sınırlar**
 - Dizide gerçek kan dakikaları bilinmiyor; dex1-1 için hakem önerisi kullanılıyor (5. ve 27. dk, D-022).
-  v2b eşik 0.3'te v1'den az işaretliyor (%15 / %18), dakikada yanlış alarm henüz ölçülmedi
-  ([sonuç](experiments/results/2026-11-08_isaret_dex1-1_hakem_v2b.md)).
+  Bu dakikalarla eşik 0.3'te kan dışında dakikada yanlış alarm: v1 3.36, v2b 2.52 (hedef 0.5); ikisi de iki
+  aralığı yakalıyor ([sonuç](experiments/results/2026-11-08_isaret_dex1-1_hakem_v2b.md)). Dizi
+  kareleriyle eğitim (v2b_dizi) bekleniyor.
 
 ## 0.1.0 (2026-11-03 – 2026-11-07)
 
