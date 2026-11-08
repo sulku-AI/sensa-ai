@@ -62,7 +62,7 @@ def relabel(coco: dict, stem: str, fps: float, ranges: list[tuple[float, float]]
             keep_anns += anns.get(img["id"], [])
             st["dokunulmadi"] += 1
             continue
-        t = frame_index(name) / fps
+        t = float(img["time_s"]) if "time_s" in img else frame_index(name) / fps  # yeni autolabel zamanı yazar
         own = anns.get(img["id"], [])
         if not inside(t):
             images.append(img)  # etiketsiz: zor negatif

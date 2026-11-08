@@ -123,3 +123,41 @@ def test_pipeline_cli_with_models(patched: Path, monkeypatch: pytest.MonkeyPatch
 
     pipeline.main(["analyze", str(proxy_video), "--prompts", "proxy"])
     assert proxy_video.with_suffix(".blurtrack.json").exists()
+
+
+def test_autolabel_negative_mode_writes_unlabeled_frames(
+    patched: Path, monkeypatch: pytest.MonkeyPatch, proxy_video: Path
+) -> None:
+    from sensa_ai import safety
+    from tools import autolabel
+
+    data = patched / "data"
+    monkeypatch.setattr(safety, "DATA_ROOT", data)
+    monkeypatch.setattr(autolabel, "ROOT", patched)
+    vids = data / "negatif" / "videolar"
+    vids.mkdir(parents=True)
+    (vids / "n.mp4").write_bytes(proxy_video.read_bytes())
+    out = data / "negatif" / "video_zor"
+    argv = ["al", str(vids), "--out", str(out), "--fps", "2", "--min-score", "0", "--negative", "--keep-empty", "1"]
+    monkeypatch.setattr(sys, "argv", argv)
+    original = safety.write_dataset_frame
+    monkeypatch.setattr(safety, "write_dataset_frame", lambda p, f, data_root=data: original(p, f, data_root))
+    autolabel.main()
+    coco = json.loads((out / "_annotations.coco.json").read_text())
+    assert coco["images"] and not coco["annotations"]  # kansız video: etiket yok
+    assert all("time_s" in im for im in coco["images"])
+    res = json.loads(next((patched / "experiments" / "results").glob("*_autolabel.json")).read_text())
+    assert res["mod"] == "negatif" and "n.mp4" in res["dakika_basina_isaretli"]
+
+
+def test_flag_timeline_cli_compares_detectors(
+    patched: Path, monkeypatch: pytest.MonkeyPatch, proxy_video: Path
+) -> None:
+    from tools import flag_timeline
+
+    res = patched / "sonuc"
+    argv = ["ft", str(proxy_video), "--detector", "grounding_dino_tiny", "--fps", "2", "--min-score", "0"]
+    monkeypatch.setattr(sys, "argv", argv + ["--ranges", "0:01-0:03", "--results", str(res)])
+    flag_timeline.main()
+    rows = json.loads(next(res.glob("*_isaret_vekil.json")).read_text())
+    assert "disi_dakikada_yanlis_alarm" in next(iter(rows.values()))

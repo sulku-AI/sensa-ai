@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from pathlib import Path
 from typing import Any
 
@@ -14,10 +15,19 @@ PROMPTS_PATH = ROOT / "config" / "prompts.yaml"
 STATUSES = {"measured", "datasheet", "literature", "sim", "estimate", "target"}
 
 
+_RAW_CACHE: dict[Path, tuple[int, dict[str, dict[str, dict[str, Any]]]]] = {}
+
+
 def load_raw(path: Path = PARAMS_PATH) -> dict[str, dict[str, dict[str, Any]]]:
-    with open(path, encoding="utf-8") as f:
-        data: dict[str, dict[str, dict[str, Any]]] = yaml.safe_load(f)
-    return data
+    """YAML'ı dosya değişmedikçe bir kez ayrıştırır (her karede ~6 ms idi). Çağıran kopyayı değiştirebilir."""
+    key = Path(path).resolve()
+    mtime = key.stat().st_mtime_ns
+    hit = _RAW_CACHE.get(key)
+    if hit is None or hit[0] != mtime:
+        with open(key, encoding="utf-8") as f:
+            data: dict[str, dict[str, dict[str, Any]]] = yaml.safe_load(f)
+        _RAW_CACHE[key] = hit = (mtime, data)
+    return copy.deepcopy(hit[1])
 
 
 _PROFILE: str | None = None

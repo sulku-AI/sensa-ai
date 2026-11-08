@@ -51,6 +51,14 @@ def group_key(path: Path) -> str:
     return f"{path.parent.parent.name}/{stem}" if path.parent.name in SPLITS else f"{path.parent}/{stem}"
 
 
+VIDEO_FRAME = re.compile(r"_\d{7}(\.\w+)?$")
+
+
+def is_video_group(members: list[Item]) -> bool:
+    """Grup bir videonun farklı kareleri mi (autolabel `video_0001234`), yoksa artırma kopyaları mı."""
+    return len(members) > 1 and all(VIDEO_FRAME.search(m[0].name) for m in members)
+
+
 def hash_split(key: str) -> str:
     u = int(hashlib.sha1(key.encode()).hexdigest()[:8], 16) / 0xFFFFFFFF
     return "train" if u < 0.8 else "valid" if u < 0.9 else "test"
@@ -84,7 +92,8 @@ def collect(src: list[Path], neg: list[Path], train_only: list[Path] | None = No
             if p.suffix.lower() in IMG_EXT:
                 im = cv2.imread(str(p), cv2.IMREAD_REDUCED_GRAYSCALE_8)  # yalnız boyut için
                 if im is not None:
-                    items.append((p, im.shape[1] * 8, im.shape[0] * 8, [], f"neg:{p.name}", None))
+                    # video kareleri (zor negatif madenciliği) tek grup: aynı sahne hem train'de hem test'te olmasın
+                    items.append((p, im.shape[1] * 8, im.shape[0] * 8, [], f"neg:{folder.name}:{group_key(p)}", None))
     return items
 
 
@@ -98,6 +107,9 @@ def split_items(items: list[Item], aug_per_image: int) -> dict[str, list[Item]]:
     for key, members in sorted(groups.items()):
         given = [m[5] for m in members if m[5] is not None]
         split = max(given, key=rank.__getitem__) if given else hash_split(key)
+        if is_video_group(members):  # farklı anlar, kopya değil: hepsi kalır
+            out[split].extend(members)
+            continue
         keep = aug_per_image if split == "train" else 1
         out[split].extend(members[: max(1, keep)])
     rng = random.Random(0)

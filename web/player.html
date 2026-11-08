@@ -25,6 +25,7 @@
   <button id="play" disabled>Oynat</button>
   <input type="range" id="seek" min="0" max="1" step="0.01" value="0" disabled style="flex:1;min-width:160px">
   <span id="time">0:00</span>
+  <button id="dark" title="Esc ya da b">Karart (Esc)</button>
 </header>
 <div id="stage"><canvas id="out" width="640" height="360"></canvas></div>
 <div id="status">Video ve .blurtrack.json seç. İz yüklenmeden oynatma açılmaz.</div>
@@ -70,8 +71,10 @@ function fillRegion(r, w, h, dilate) {
   }
 }
 
+let dark = false;  // panik tuşu: tuval siyah, ses ve oynatma sürer
 function draw(t) {
   const w = out.width, h = out.height, b = params.blur;
+  if (dark) { ctx.fillStyle = "#000"; ctx.fillRect(0, 0, w, h); return; }
   const m = mode(bt, t, params.lookahead.safe_margin_s);
   if (m === "failsafe" && b.failsafe_full_frame !== false) {
     ctx.filter = `blur(${b.failsafe_sigma_px}px)`;
@@ -151,13 +154,24 @@ $("play").addEventListener("click", () => {
   else { v.pause(); $("play").textContent = "Oynat"; }
 });
 $("seek").addEventListener("input", (e) => { v.currentTime = Number(e.target.value); });
-document.addEventListener("keydown", (e) => { if (e.code === "Space" && !$("play").disabled) { e.preventDefault(); $("play").click(); } });
+function toggleDark() {
+  dark = !dark;
+  $("dark").textContent = dark ? "Görüntüyü aç (Esc)" : "Karart (Esc)";
+  if (params && bt && videoReady) draw(v.currentTime);
+  else if (dark) { ctx.fillStyle = "#000"; ctx.fillRect(0, 0, out.width, out.height); }
+}
+$("dark").addEventListener("click", toggleDark);
+document.addEventListener("keydown", (e) => {
+  if (e.code === "Space" && !$("play").disabled) { e.preventDefault(); $("play").click(); }
+  if (e.key === "Escape" || e.key === "b") { e.preventDefault(); toggleDark(); }
+});
 
 // Test kancası (tests/test_web.py): dosya seçici yerine doğrudan URL ve iz nesnesi
 window.sensa = {
   async load(videoUrl, trackObj) { bt = parse(trackObj); v.src = videoUrl; },
   seek(t) { return new Promise((res) => { v.addEventListener("seeked", () => { draw(v.currentTime); res(); }, { once: true }); v.currentTime = t; }); },
   ready: () => videoReady && params !== null,
+  toggleDark,
 };
 
 async function autoLoad() {

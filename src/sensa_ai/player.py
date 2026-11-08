@@ -59,11 +59,26 @@ class Analyzer(threading.Thread):
                 self.track.analyzed_until_s = t
             self.playhead_s = t
 
+    @staticmethod
+    def _seek(cap: cv2.VideoCapture, fps: float, t: float, next_idx: int, max_skip_s: float = 2.0) -> int:
+        """t anındaki kareye gel. Yakın ilerideyse kareleri atlayarak (grab) gider: her örnekte arama yapmak
+        H.264'te önceki anahtar kareden yeniden çözmek demek, 6 örnek/sn'de analizi birkaç kat yavaşlatır."""
+        target = int(round(t * fps))
+        gap = target - next_idx
+        if next_idx < 0 or gap < 0 or gap > max_skip_s * fps:
+            cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
+            return target
+        for _ in range(gap):
+            if not cap.grab():
+                break
+        return target
+
     def run(self) -> None:
         cap = cv2.VideoCapture(str(self.video))
         fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
         step = 1.0 / self.sample_fps
         n_chunk = max(1, round(fps * step)) if self.tracker else 1
+        next_idx = -1  # kod çözücünün sıradaki karesi (bilinmiyor)
         while not self.stop_event.is_set():
             with self.lock:
                 start, end = la.next_window(
@@ -73,13 +88,14 @@ class Analyzer(threading.Thread):
                 time.sleep(0.02)
                 continue
             t = start
-            cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
+            next_idx = self._seek(cap, fps, t, next_idx)
             chunk = []
             for _ in range(n_chunk):
                 ok, frame = cap.read()
                 if not ok:
                     break
                 chunk.append(frame)
+                next_idx += 1
             if not chunk:
                 with self.lock:
                     self.track.analyzed_until_s = self.track.duration_s
