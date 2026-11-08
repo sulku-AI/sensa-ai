@@ -13,9 +13,10 @@ Uyarı (FA-04): ham etiketler modelin kendi hatalarını içerir. Eğitime ancak
 ile (gerçek kan dakikaları dışındaki tespitler zor negatife çevrilerek) girer.
 
 Kansız video için `--negative` (zor negatif madenciliği): videoda kan OLMADIĞI biliniyorsa modelin
-"kan" dediği her kare yanlış alarmdır. Bu kareler etiketsiz yazılır, eğitimde `--neg` ile verilir:
+"kan" dediği her kare yanlış alarmdır. Bu kareler etiketsiz yazılır, eğitimde `--neg` ile verilir. Ham
+kareler kimden gelirse gelsin yalnız kilitli data/pozitif/ altına yazılır (safety.write_dataset_frame):
 
-    python -m tools.autolabel data/negatif/videolar --out data/negatif/video_zor --negative --min-score 0.2
+    python -m tools.autolabel data/kansiz_videolar --out data/pozitif/kansiz_zor --negative --min-score 0.2
 
 Hız: örneklenmeyen kareler yalnız atlanır (grab), çözülüp kopyalanmaz. Uzun videoda her ~5 dakikada
 bir ilerleme satırı yazar. Dakika başına işaretli saniye sonuca da yazılır (görüntü yok).
@@ -75,6 +76,9 @@ def main() -> None:
     ap.add_argument("--profile", default=None, help="hassasiyet profili (params.yaml)")
     args = ap.parse_args()
     config.set_profile(args.profile)
+    pos = (safety.DATA_ROOT / "pozitif").resolve()
+    if pos not in args.out.resolve().parents:  # model yüklenmeden önce söyle (D-001: ham kare kilitli klasörde)
+        ap.error(f"--out yalnız {pos} altında olabilir, ör. data/pozitif/kansiz_zor")
 
     prompts = config.load_prompts()
     p = config.load()
