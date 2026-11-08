@@ -224,7 +224,7 @@ def main() -> None:
     t.add_argument("--lr", type=float, default=1e-4)
     t.add_argument("--device", default=None)
     t.add_argument("--out", type=Path, default=ROOT / "models" / "rfdetr_seg_nano", help="Colab: Drive klasörü")
-    t.add_argument("--resume", type=Path, default=None, help="yarım kalan eğitim: <out>/checkpoint.pth")
+    t.add_argument("--resume", type=Path, default=None, help="yarım kalan eğitim: <out>/last.ckpt")
     args = ap.parse_args()
     prepare(args) if args.cmd == "prepare" else train(args)
 
