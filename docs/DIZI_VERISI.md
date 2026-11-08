@@ -29,21 +29,48 @@ sayı daha verir:
 | `disi_dakikada_yanlis_alarm` | gerçek kan dışında dakikada kaç ayrı yanlış bulanıklık olayı | `requirements.false_alarm_per_min` (params.yaml) |
 | `ici_isaretli_oran`, `yakalanan_aralik` | gerçek kan aralıklarında işaretli saniye oranı, en az bir kez yakalanan aralık | yüksek |
 
-Aralıklar kaba olduğu için bu sayılar kesin değil, ama iki modeli karşılaştırmaya yeter.
+Aralıklar kaba olduğu için bu sayılar kesin değil, ama iki modeli karşılaştırmaya yeter. Emin olunmayan
+dakikalar `--unsure` ile sayımdan çıkarılır.
+
+### Gerçek dakikalar bilinmiyorsa: hakem önerisi
+
+```bash
+python -m tools.flag_timeline data/pozitif/videolar/dex1-1.mp4 --min-score 0.3 --judge siglip --judge owlv2_base
+```
+
+İlk modelin işaretlediği her saniyeye iki bağımsız model daha bakar: SigLIP ("kan mı, ketçap / boya /
+kırmızı kumaş mı") ve OWLv2 (metinle "blood"). Üçünün birlikte "kan" dediği saniyeler `ortak` sütunu.
+Araç iki öneri yazar (eşikler params `dizi`):
+
+- **aday kan dakikaları**: en az `judge_min_s` ortak saniyesi olan dakikalar → `--ranges`
+- **belirsiz dakikalar**: daha az ortak saniyesi olan dakikalar ve aday dakikaların önü / arkası → `--unsure`
+
+Belirsiz dakikalar ne kan ne "kan değil" sayılır: eğitimden de yanlış alarm sayımından da çıkar. Bu bir
+model önerisi; hakemlerin kaçırdığı gerçek kan "kan değil" diye öğretilebilir (D-022). İzleyen biri
+dakikaları kabaca biliyorsa onun bilgisi her zaman önce gelir. dex1-1 sonucu:
+[2026-11-08_isaret_dex1-1_hakem_v2b.md](../experiments/results/2026-11-08_isaret_dex1-1_hakem_v2b.md).
 
 ## 2. Düzelt: etiketleri gerçek dakikalarla temizle
 
+Mac'te, repo klasöründe (`~/sensa-ai`):
+
 ```bash
-python -m tools.autolabel data/pozitif/videolar --out data/pozitif/autolabel --min-score 0.2
-python -m tools.relabel_events data/pozitif/autolabel --video data/pozitif/videolar/dex1-1.mp4 --ranges "12-14,38:10-41"
+python -m tools.autolabel data/pozitif/videolar/dex1-1.mp4 --out data/pozitif/autolabel --min-score 0.2 --detector rfdetr:models/rfdetr_v2b/checkpoint_best_ema.pth
+python -m tools.relabel_events data/pozitif/autolabel --video data/pozitif/videolar/dex1-1.mp4 --ranges "5-6,27-28" --unsure "4-5,6-7,16-17,19-20,26-27,28-30,38-39"
+COPYFILE_DISABLE=1 tar -cf autolabel.tar data/pozitif/autolabel
 ```
 
-`--min-score 0.2`: oynatıcının güçlü profilde gördüğü yanlışların hepsi yakalansın diye düşük.
-`relabel_events` aralık dışındaki her tespiti siler, o kare "bu kan değil" örneği olur (zor negatif).
-Aralık içinde yalnız güçlü tespitler (skor ≥ 0.5) kan olarak kalır.
+- `--min-score 0.2`: oynatıcının güçlü profilde gördüğü yanlışların hepsi yakalansın diye düşük; dedektörün
+  kendi eşiği de 0.2'ye iner (2.1.0'dan önce 0.3'te kalıyordu). Zor negatifler eğitilen modelin kendi
+  yanlışları olsun diye en yeni model (v2b) kullanılır.
+- `relabel_events` aralık dışındaki her tespiti siler, o kare "bu kan değil" örneği olur (zor negatif).
+  Bir dakikada en çok `dizi.neg_per_min` tanesi kalır (eşit aralıklı): art arda saniyeler neredeyse aynı
+  kare, tek bölüm eğitimi boğmasın. Aralık içinde yalnız güçlü tespitler (skor ≥ 0.5) kan olarak kalır.
+  Belirsiz aralıktaki kareler atılır. Tekrar çalıştırmak güvenli: hep özgün dosyadan uygulanır.
 
-Sonra `autolabel.tar` yeniden yapılır, Colab defterinde `DIZI = True` ile eğitime girer (yalnız
-train'e; ölçüme girmez).
+`autolabel.tar` Drive'da `sensa_ai/` klasörüne konur, Colab defterinde `DIZI = True` ile eğitime girer
+(yalnız train'e; ölçüme girmez). Eğitim hazırlığı (`prepare --train-only`) `relabel_events`'ten geçmemiş
+bir videonun karelerini reddeder: ham etiketler modelin kırmızı yanlışlarını içerir (FA-04).
 
 ## 3. Kansız video varsa: zor negatif madenciliği
 

@@ -166,6 +166,7 @@ def test_flag_timeline_cli_compares_detectors(
     argv += ["--judge", "siglip", "--judge", "grounding_dino_tiny"]
     monkeypatch.setattr(sys, "argv", argv + ["--ranges", "0:01-0:03", "--results", str(res)])
     flag_timeline.main()
-    rows = json.loads(next(res.glob("*_isaret_vekil.json")).read_text())
+    rows = json.loads(next(res.glob("*_isaret_vekil_e0_hakem.json")).read_text())
     assert "disi_dakikada_yanlis_alarm" in next(iter(rows.values()))
     assert "hakem:siglip" in rows and "aday_kan_dakikalari" in rows["ortak"]
+    assert "belirsiz_dakikalar" in rows["ortak"]

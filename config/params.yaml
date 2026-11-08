@@ -52,6 +52,12 @@ requirements:          # Kabul ölçütleri: docs/TEST_PLANI.md
   false_alarm_per_min: {value: 0.5,  status: target, source: "H-02: negatif sette dakikada en fazla yanlış bulanıklık"}
   realtime_factor:     {value: 1.2,  status: target, source: "H-03: analiz hızı / oynatma hızı (en az)"}
 
+dizi:                  # Dizi verisiyle iyileştirme: docs/DIZI_VERISI.md, D-022
+  judge_min_s:         {value: 5,  status: estimate, source: "flag_timeline: hakemlerle ortak en az bu kadar saniyesi olan dakika aday kan dakikası (dex1-1: 5. ve 27. dk)"}
+  judge_unsure_s:      {value: 2,  status: estimate, source: "Bundan judge_min_s'e kadar ortak saniyesi olan dakika belirsiz: eğitime ve yanlış alarm sayımına girmez"}
+  unsure_margin_min:   {value: 1,  status: estimate, source: "Aday kan aralığının önündeki ve arkasındaki dakika da belirsiz: sahne dakika sınırını aşabilir"}
+  neg_per_min:         {value: 12, status: estimate, source: "relabel_events: aralık dışında dakikada en çok bu kadar zor negatif. Art arda saniyeler neredeyse aynı kare, tek bölüm eğitimi boğmasın. 0 = sınırsız"}
+
 profiles:              # M4 hassasiyet profilleri: seçilen profil yukarıdaki değerlerin üzerine yazar
   hafif:               # daha az bulanıklık, daha az yanlış alarm
     blur.sigma_px:         {value: 12.0, status: estimate, source: "M4, kullanıcı ayarlayacak"}

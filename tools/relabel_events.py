@@ -9,6 +9,13 @@ gerçekten kan olan dakikaları kabaca yazar; bu araç:
   * aralık İÇİNDE skoru `--pos-min-score` altındaki bölgeleri siler, kalan kare pozitif kalır
   * aralık içinde hiç bölgesi kalmayan kareyi atar (kaçırma mı, gerçekten kansız mı bilinmiyor)
 `--ranges` yerine `--events data/etiket/<video>.json` (tools.label_events çıktısı) da verilebilir.
+Kansız bir video için `--ranges ""`: bütün tespitler zor negatif olur.
+
+Aralıklar insan bilgisi değil de model önerisiyse (`tools.flag_timeline --judge`), emin olunmayan
+dakikalar `--unsure` ile verilir: oradaki kareler ne pozitif ne negatif, eğitimden çıkar. Bir dakikada
+en çok `--neg-per-min` zor negatif kalır (params `dizi.neg_per_min`, eşit aralıklı seçilir): art arda
+saniyeler neredeyse aynı kare.
+
 Özgün dosya `_annotations.coco.orig.json` olarak saklanır; her video için verilen aralıklar dosyada
 tutulur ve her çalıştırmada özgünden yeniden uygulanır (aynı video için tekrar çalıştırmak güvenli).
 """
@@ -46,47 +53,79 @@ def frame_index(file_name: str) -> int:
     return int(m.group(1))
 
 
-def relabel(coco: dict, stem: str, fps: float, ranges: list[tuple[float, float]], pos_min: float) -> tuple[dict, dict]:
-    def inside(t: float) -> bool:
-        return any(a - PAD_S <= t <= b + PAD_S for a, b in ranges)
+def relabel(
+    coco: dict,
+    stem: str,
+    fps: float,
+    ranges: list[tuple[float, float]],
+    pos_min: float,
+    unsure: list[tuple[float, float]] | None = None,
+    neg_per_min: int = 0,
+) -> tuple[dict, dict]:
+    """`stem` videosunun karelerini aralıklara göre düzeltir; diğer videoların karelerine dokunmaz."""
+
+    def near(t: float, rr: list[tuple[float, float]]) -> bool:
+        return any(a - PAD_S <= t <= b + PAD_S for a, b in rr)
 
     anns: dict[int, list[dict]] = {}
     for a in coco["annotations"]:
         anns.setdefault(a["image_id"], []).append(a)
-    images, keep_anns = [], []
-    st = {"negatif_oldu": 0, "pozitif_kaldi": 0, "atildi": 0, "dokunulmadi": 0, "bos_negatif": 0}
+    keep: dict[int, list[dict]] = {}  # kalan kare -> kalan etiketleri
+    hard: dict[int, list[tuple[float, int]]] = {}  # dakika -> (zaman, kare) zor negatif adayları
+    names = ("negatif_oldu", "pozitif_kaldi", "atildi", "belirsiz_atildi", "fazla_negatif_atildi", "dokunulmadi")
+    st = dict.fromkeys((*names, "bos_negatif"), 0)
     for img in coco["images"]:
         name = Path(img["file_name"]).name
+        own = anns.get(img["id"], [])
         if not name.startswith(stem + "_"):
-            images.append(img)
-            keep_anns += anns.get(img["id"], [])
+            keep[img["id"]] = own
             st["dokunulmadi"] += 1
             continue
         t = float(img["time_s"]) if "time_s" in img else frame_index(name) / fps  # yeni autolabel zamanı yazar
-        own = anns.get(img["id"], [])
-        if not inside(t):
-            images.append(img)  # etiketsiz: zor negatif
-            st["negatif_oldu" if own else "bos_negatif"] += 1
-            continue
-        good = [a for a in own if a.get("score", 1.0) >= pos_min]
-        if good:
-            images.append(img)
-            keep_anns += good
-            st["pozitif_kaldi"] += 1
+        if near(t, ranges):
+            good = [a for a in own if a.get("score", 1.0) >= pos_min]
+            if good:
+                keep[img["id"]] = good
+                st["pozitif_kaldi"] += 1
+            else:  # kaçırma mı, gerçekten kansız mı bilinmiyor
+                st["atildi"] += 1
+        elif unsure and near(t, unsure):
+            st["belirsiz_atildi"] += 1
+        elif own:  # model burada yanıldı: etiketsiz zor negatif
+            hard.setdefault(int(t // 60), []).append((t, img["id"]))
         else:
-            st["atildi"] += 1
-    return {**coco, "images": images, "annotations": keep_anns}, st
+            keep[img["id"]] = []
+            st["bos_negatif"] += 1
+    for rows in hard.values():
+        rows.sort()
+        picked = rows
+        if 0 < neg_per_min < len(rows):  # eşit aralıklı seçim: sahne çeşitliliği kalsın
+            picked = [rows[int(i * len(rows) / neg_per_min)] for i in range(neg_per_min)]
+        for _, img_id in picked:
+            keep[img_id] = []
+        st["negatif_oldu"] += len(picked)
+        st["fazla_negatif_atildi"] += len(rows) - len(picked)
+    images = [img for img in coco["images"] if img["id"] in keep]
+    kept_anns = [a for img in images for a in keep[img["id"]]]
+    return {**coco, "images": images, "annotations": kept_anns}, st
 
 
 def main() -> None:
+    from sensa_ai import config
+
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("folder", type=Path, help="autolabel çıktısı")
     ap.add_argument("--video", type=Path, required=True, help="karelerin geldiği video (yalnız fps okunur)")
     g = ap.add_mutually_exclusive_group(required=True)
-    g.add_argument("--ranges", help='gerçek kan aralıkları, ör. "12:00-14:30,38:10-41:00"')
+    g.add_argument("--ranges", help='gerçek kan aralıkları, ör. "12:00-14:30,38:10-41:00"; kansız video için ""')
     g.add_argument("--events", type=Path, help="tools.label_events JSON çıktısı")
+    ap.add_argument("--unsure", default="", help='emin olunmayan aralıklar, eğitimden çıkar: ör. "16-17,28-30"')
     ap.add_argument("--pos-min-score", type=float, default=0.5)
+    ap.add_argument(
+        "--neg-per-min", type=int, default=None, help="dakikada en çok zor negatif (yoksa params; 0 sınırsız)"
+    )
     args = ap.parse_args()
+    neg_per_min = int(config.load()["dizi"]["neg_per_min"]) if args.neg_per_min is None else args.neg_per_min
 
     if args.events:
         ranges = [(e["start"], e["end"]) for e in json.loads(args.events.read_text())["events"]]
@@ -102,10 +141,25 @@ def main() -> None:
     cur = json.loads(ann.read_text())
     if "relabel" not in cur:  # autolabel'den taze çıktı: özgün kopya bu
         orig.write_text(ann.read_text())
-    history = {**cur.get("relabel", {}), args.video.stem: {"ranges": ranges, "fps": fps, "pos_min": args.pos_min_score}}
+    entry = {
+        "ranges": ranges,
+        "unsure": parse_ranges(args.unsure),
+        "fps": fps,
+        "pos_min": args.pos_min_score,
+        "neg_per_min": neg_per_min,
+    }
+    history = {**cur.get("relabel", {}), args.video.stem: entry}
     coco = json.loads(orig.read_text())
     for stem, h in history.items():  # her video kendi aralıklarıyla, hep özgünden
-        coco, st = relabel(coco, stem, h["fps"], [tuple(r) for r in h["ranges"]], h["pos_min"])
+        coco, st = relabel(
+            coco,
+            stem,
+            h["fps"],
+            [tuple(r) for r in h["ranges"]],
+            h["pos_min"],
+            [tuple(r) for r in h.get("unsure", [])],
+            int(h.get("neg_per_min", 0)),
+        )
         print(stem, st)
     coco["relabel"] = history
     ann.write_text(json.dumps(coco))

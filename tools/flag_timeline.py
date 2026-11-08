@@ -10,7 +10,10 @@ iki sayı çıkarır:
   * aralık İÇİ: işaretli örnek oranı (kapsama vekili) ve en az bir kez yakalanan aralık oranı
   * aralık DIŞI: dakikada yanlış alarm olayı (art arda işaretli örnekler tek olay; hedef
     requirements.false_alarm_per_min) ve işaretli saniye oranı
-Sonuç: experiments/results/<tarih>_isaret_<video>.md (+ .json). Yalnız sayı.
+`--judge` ile ikinci görüş alınırsa iki öneri çıkar: aday kan dakikaları (`--ranges` için) ve emin
+olunmayan dakikalar (`--unsure` için: eğitime de yanlış alarm sayımına da girmez). Eşikler params `dizi`.
+Sonuç: experiments/results/<tarih>_isaret_<video>_e<eşik>[_hakem].md (+ .json), eski sonucun üstüne
+yazılmaz. Yalnız sayı.
 """
 
 from __future__ import annotations
@@ -85,8 +88,14 @@ def sample_flags(
 
 
 def summarize(
-    times: list[float], flags: list[bool], duration: float, ranges: list[tuple[float, float]] | None, step_s: float
+    times: list[float],
+    flags: list[bool],
+    duration: float,
+    ranges: list[tuple[float, float]] | None,
+    step_s: float,
+    unsure: list[tuple[float, float]] | None = None,
 ) -> dict[str, Any]:
+    """`unsure` aralıklarındaki örnekler (gerçek aralık içinde değilse) ne isabete ne yanlış alarma sayılır."""
     minutes = [0] * (int(duration // 60) + 1)
     for t, f in zip(times, flags, strict=True):
         if f:
@@ -100,11 +109,12 @@ def summarize(
     if ranges is None:
         return out
 
-    def inside(t: float) -> bool:
-        return any(a <= t <= b for a, b in ranges)
+    def inside(t: float, rr: list[tuple[float, float]]) -> bool:
+        return any(a <= t <= b for a, b in rr)
 
-    ins = [f for t, f in zip(times, flags, strict=True) if inside(t)]
-    outs = [(t, f) for t, f in zip(times, flags, strict=True) if not inside(t)]
+    ins = [f for t, f in zip(times, flags, strict=True) if inside(t, ranges)]
+    rest = [(t, f) for t, f in zip(times, flags, strict=True) if not inside(t, ranges)]
+    outs = [(t, f) for t, f in rest if not inside(t, unsure or [])]
     events, last = 0, -1e9
     for t, f in outs:
         if f:
@@ -116,6 +126,7 @@ def summarize(
     out.update(
         {
             "ici_isaretli_oran": sum(ins) / max(1, len(ins)),
+            "belirsiz_ornek": len(rest) - len(outs),
             "yakalanan_aralik": f"{caught}/{len(ranges)}",
             "disi_dakika": round(out_minutes, 2),
             "disi_yanlis_alarm_olayi": events,
@@ -124,6 +135,34 @@ def summarize(
         }
     )
     return out
+
+
+def unsure_ranges(minutes: list[int], min_s: int, unsure_s: int, margin_min: int) -> str:
+    """Emin olunmayan dakikalar: `unsure_s`..`min_s` arası ortak saniyesi olanlar ve aday kan
+    dakikalarının `margin_min` önü / arkası (aday dakikaların kendisi hariç). Biçim candidate_ranges gibi."""
+    blood = {m for m, n in enumerate(minutes) if n >= min_s}
+    weak = {m for m, n in enumerate(minutes) if unsure_s <= n < min_s}
+    near = {m + d for m in blood for d in range(-margin_min, margin_min + 1)}
+    pick = {m for m in weak | near if 0 <= m < len(minutes)} - blood
+    return candidate_ranges([1 if m in pick else 0 for m in range(len(minutes))], 1)
+
+
+def short_name(spec: str) -> str:
+    """'rfdetr:models/rfdetr_v2b/checkpoint_best_ema.pth' -> 'rfdetr_v2b/best_ema' (tablo sütunu)."""
+    path = Path(spec.removeprefix("rfdetr:"))
+    if path.suffix != ".pth":
+        return spec.removeprefix("rfdetr:")
+    stem = path.stem.removeprefix("checkpoint_")
+    return f"{path.parent.name}/{stem}" if path.parent.name else stem
+
+
+def result_stem(results: Path, video: Path, min_score: float, judged: bool) -> str:
+    """Aynı gün aynı videoda farklı çalıştırmalar birbirinin üstüne yazmasın."""
+    base = f"{dt.date.today()}_isaret_{video.stem}_e{min_score:g}" + ("_hakem" if judged else "")
+    stem, n = base, 2
+    while (results / f"{stem}.md").exists() or (results / f"{stem}.json").exists():
+        stem, n = f"{base}_{n}", n + 1
+    return stem
 
 
 def candidate_ranges(minutes: list[int], min_s: int) -> str:
@@ -155,7 +194,8 @@ def main() -> None:
         default=[],
         help="ilk dedektörün işaretlediği anlarda ikinci görüş: siglip ya da bir dedektör adı (ör. owlv2_base)",
     )
-    ap.add_argument("--judge-min-s", type=int, default=5, help="aday kan dakikası için en az ortak saniye")
+    ap.add_argument("--unsure", default=None, help='emin olunmayan aralıklar: sayımdan çıkar, ör. "16-17,28-30"')
+    ap.add_argument("--judge-min-s", type=int, default=None, help="aday kan dakikası için en az ortak saniye")
     ap.add_argument("--device", default=None)
     ap.add_argument("--profile", default=None)
     ap.add_argument("--results", type=Path, default=ROOT / "experiments" / "results")
@@ -163,6 +203,7 @@ def main() -> None:
     config.set_profile(args.profile)
     p = config.load()
     min_score = float(p["detect"]["seg_threshold"]) if args.min_score is None else args.min_score
+    judge_min_s = int(p["dizi"]["judge_min_s"]) if args.judge_min_s is None else args.judge_min_s
 
     names: list[str]
     dets: list[Detector]
@@ -180,10 +221,7 @@ def main() -> None:
             d = models.make_detector(spec, device=args.device)
             d.box_threshold = min(d.box_threshold, min_score)  # eşik burada uygulanır
             dets.append(d)
-        names = [
-            models.detector_name(d) if s is None else s.removeprefix("rfdetr:")
-            for d, s in zip(dets, specs, strict=True)
-        ]
+        names = [models.detector_name(d) if s is None else short_name(s) for d, s in zip(dets, specs, strict=True)]
         prompts = config.load_prompts()["positive"]
 
     judges: list[Detector] = []
@@ -199,28 +237,35 @@ def main() -> None:
         names.append(f"hakem:{spec}")
     names = [n if names.index(n) == k else f"{n} ({k + 1})" for k, n in enumerate(names)]  # aynı ad iki kez
     ranges = parse_ranges(args.ranges) if args.ranges else None
+    unsure = parse_ranges(args.unsure) if args.unsure else None
     times, scores, duration = sample_flags(args.video, dets, args.fps, min_score, prompts, judges)
     rows = {
-        n: summarize(times, [s > 0 for s in sc], duration, ranges, 1 / args.fps)
+        n: summarize(times, [s > 0 for s in sc], duration, ranges, 1 / args.fps, unsure)
         for n, sc in zip(names, scores, strict=True)
     }
-    suggestion = ""
+    suggestion = unsure_text = ""
     if judges:  # ilk dedektör ve bütün hakemler birlikte "kan" diyorsa
         agree = [all(sc[j] > 0 for sc in [scores[0], *scores[len(dets) :]]) for j in range(len(times))]
-        rows["ortak"] = summarize(times, agree, duration, ranges, 1 / args.fps)
+        rows["ortak"] = summarize(times, agree, duration, ranges, 1 / args.fps, unsure)
         names.append("ortak")
-        suggestion = candidate_ranges(rows["ortak"]["dakika"], args.judge_min_s)
+        mins = rows["ortak"]["dakika"]
+        suggestion = candidate_ranges(mins, judge_min_s)
+        unsure_text = unsure_ranges(
+            mins, judge_min_s, int(p["dizi"]["judge_unsure_s"]), int(p["dizi"]["unsure_margin_min"])
+        )
         rows["ortak"]["aday_kan_dakikalari"] = suggestion
+        rows["ortak"]["belirsiz_dakikalar"] = unsure_text
 
     lines = [
         f"# İşaret zaman çizelgesi {dt.date.today()}",
         "",
         f"Video: `{args.video.name}`, {duration / 60:.1f} dk, "
         f"saniyede {args.fps:g} örnek, eşik {min_score:g}."
-        + (f" Gerçek kan aralıkları: {args.ranges}" if ranges else ""),
+        + (f" Gerçek kan aralıkları: {args.ranges}" if ranges else "")
+        + (f" Belirsiz (sayılmadı): {args.unsure}" if unsure else ""),
         "",
     ]
-    keys = [k for k in next(iter(rows.values())) if k not in ("dakika", "aday_kan_dakikalari")]
+    keys = [k for k in next(iter(rows.values())) if k not in ("dakika", "aday_kan_dakikalari", "belirsiz_dakikalar")]
     lines += ["| ölçüt | " + " | ".join(names) + " |", "|---" * (len(names) + 1) + "|"]
     for k in keys:
         vals = [rows[n][k] for n in names]
@@ -234,11 +279,14 @@ def main() -> None:
     if judges:
         lines += [
             "",
-            f"Hakemlerle ortak aday kan dakikaları (en az {args.judge_min_s} ortak saniye): `{suggestion or 'yok'}`.",
-            "Bu bir model önerisi, insan bilgisi değil: relabel_events'e vermeden önce kaba doğrulama gerekir.",
+            f"Hakemlerle ortak aday kan dakikaları (en az {judge_min_s} ortak saniye): `{suggestion or 'yok'}`.",
+            f"Emin olunmayan dakikalar (eğitime ve sayıma girmez): `{unsure_text or 'yok'}`.",
+            "Bu bir model önerisi, insan bilgisi değil. Kaba doğrulamadan sonra relabel_events ve ölçüm için:",
+            "",
+            f'    --ranges "{suggestion}" --unsure "{unsure_text}"',
         ]
     args.results.mkdir(parents=True, exist_ok=True)
-    stem = f"{dt.date.today()}_isaret_{args.video.stem}"
+    stem = result_stem(args.results, args.video, min_score, bool(judges))
     (args.results / f"{stem}.json").write_text(json.dumps(rows, indent=1, ensure_ascii=False))
     (args.results / f"{stem}.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("\n".join(lines))

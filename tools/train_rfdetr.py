@@ -118,9 +118,29 @@ def split_items(items: list[Item], aug_per_image: int) -> dict[str, list[Item]]:
     return out
 
 
+def unrelabeled_videos(folder: Path) -> list[str]:
+    """`--train-only` autolabel klasöründe relabel_events'ten geçmemiş videolar. Ham etiketler modelin
+    kendi kırmızı yanlışlarını içerir (FA-04); onlarla eğitmek hatayı pekiştirir."""
+    raw: set[str] = set()
+    for ann_path in folder.rglob("_annotations.coco.json"):
+        d = json.loads(ann_path.read_text())
+        done = set(d.get("relabel", {}))
+        for img in d["images"]:
+            name = Path(img["file_name"]).name
+            if VIDEO_FRAME.search(name) and VIDEO_FRAME.sub("", name) not in done:
+                raw.add(VIDEO_FRAME.sub("", name))
+    return sorted(raw)
+
+
 def prepare(args: argparse.Namespace) -> None:
     from sensa_ai import safety
 
+    for folder in args.train_only:
+        if raw := unrelabeled_videos(folder):
+            raise SystemExit(
+                f"{folder}: {', '.join(raw)} etiketleri düzeltilmemiş (FA-04). Önce her video için:\n"
+                f"  python -m tools.relabel_events {folder} --video <video> --ranges <gerçek kan dakikaları>"
+            )
     splits = split_items(collect(args.src, args.neg, args.train_only), args.aug_per_image)
     if OUT.exists():
         shutil.rmtree(OUT)

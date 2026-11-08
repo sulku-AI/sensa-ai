@@ -11,7 +11,11 @@ hatta yük olan yerleri hızlandırmak. Sürüm numarası kullanıcının isteğ
   modeli aynı karelerde karşılaştırır; gerçek kan dakikaları verilirse dizide dakikada yanlış alarm
   ölçer. Görüntü yazmaz ([docs/DIZI_VERISI.md](docs/DIZI_VERISI.md)).
 - `tools/relabel_events`: autolabel etiketlerini kabaca bilinen gerçek kan dakikalarıyla düzeltir;
-  aralık dışındaki tespitler zor negatif olur.
+  aralık dışındaki tespitler zor negatif olur, dakikada en çok `dizi.neg_per_min`. `--unsure`: emin
+  olunmayan dakikalar eğitimden çıkar (gerçek dakikalar yerine hakem önerisi kullanıldığında, D-022).
+- `flag_timeline --judge` iki öneri yazar: aday kan dakikaları ve belirsiz dakikalar (params `dizi`);
+  `--unsure` yanlış alarm sayımında da geçerli. Sonuç dosyası eşik ve hakem bilgisini taşır, aynı gün
+  yapılan önceki ölçümün üstüne yazmaz; model sütunları kısa ad (`rfdetr_v2b/best_ema`).
 - `tools/autolabel --negative`: kansız videodan zor negatif madenciliği. Her karede `time_s`, dakika
   başına işaretli saniye özeti, uzun videoda ilerleme satırı, `--profile`.
 - Web oynatıcı: Esc / b ile anında siyah ekran (masaüstü oynatıcıdaki gibi), "Karart" düğmesi.
@@ -30,10 +34,14 @@ hatta yük olan yerleri hızlandırmak. Sürüm numarası kullanıcının isteğ
   sahne hem train'de hem test'te olabiliyordu); video karelerine artırma kopyası sınırı uygulanmıyor
   (önceden bir videonun yalnız 2 karesi kalabiliyordu).
 - Model yüklenirken torch.jit / izleme uyarıları gizleniyor (zararsızdı ama ekranı dolduruyordu).
+- `autolabel --min-score` dedektörün kendi eşiğinin altına inmiyordu: 0.2 verilse de RF-DETR 0.3'ün
+  altını döndürmüyordu. Artık dedektör eşiği de iner. Klasör yerine tek video dosyası da kabul.
+- Eğitim hazırlığı `relabel_events`'ten geçmemiş dizi karelerini (`--train-only`) reddeder (FA-04).
 
 **Bilinen sınırlar**
-- Dizideki yanlış alarm henüz ölçülmedi; ilk ölçüm `flag_timeline` ile, gerçek kan dakikaları
-  gelince. v2b modelinin (zor negatifli) sonuçları bekleniyor.
+- Dizide gerçek kan dakikaları bilinmiyor; dex1-1 için hakem önerisi kullanılıyor (5. ve 27. dk, D-022).
+  v2b eşik 0.3'te v1'den az işaretliyor (%15 / %18), dakikada yanlış alarm henüz ölçülmedi
+  ([sonuç](experiments/results/2026-11-08_isaret_dex1-1_hakem_v2b.md)).
 
 ## 0.1.0 (2026-11-03 – 2026-11-07)
 

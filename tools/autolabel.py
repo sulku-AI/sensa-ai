@@ -20,6 +20,9 @@ kareler kimden gelirse gelsin yalnız kilitli data/pozitif/ altına yazılır (s
 
 Hız: örneklenmeyen kareler yalnız atlanır (grab), çözülüp kopyalanmaz. Uzun videoda her ~5 dakikada
 bir ilerleme satırı yazar. Dakika başına işaretli saniye sonuca da yazılır (görüntü yok).
+
+`--min-score` dedektörün kendi eşiğinin altındaysa dedektör eşiği de ona iner (ör. 0.2: varsayılan
+RF-DETR eşiği 0.3 olsa da 0.2-0.3 arası tespitler gelir). Klasör yerine tek video dosyası da verilebilir.
 """
 
 from __future__ import annotations
@@ -65,7 +68,7 @@ def coco_annotation(ann_id: int, img_id: int, d: Detection, w: int, h: int) -> d
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("videos", type=Path)
+    ap.add_argument("videos", type=Path, help="video klasörü ya da tek video dosyası")
     ap.add_argument("--out", type=Path, default=ROOT / "data" / "pozitif" / "autolabel")
     ap.add_argument("--fps", type=float, default=1.0)
     ap.add_argument("--detector", default=None)
@@ -84,6 +87,8 @@ def main() -> None:
     p = config.load()
     # D-016: varsayılan eğitilmiş RF-DETR-Seg (kapı params'tan); dosya yoksa OWLv2
     gd = models.build_default(device=args.device, detector=args.detector)
+    # dedektör kendi eşiğinin altını hiç döndürmez: --min-score 0.2 ise 0.2-0.3 arası da gelsin
+    gd.detector.box_threshold = min(gd.detector.box_threshold, args.min_score)
     rng = random.Random(0)
     coco: dict[str, list[dict[str, Any]]] = {
         "images": [],
@@ -94,7 +99,11 @@ def main() -> None:
     args.out.mkdir(parents=True, exist_ok=True)  # hiç kare yazılmasa da iz ve özet yazılabilsin
     per_minute: dict[str, list[int]] = {}  # video -> dakika başına işaretli örnek (≈ saniye, --fps 1'de)
 
-    for video in sorted(v for v in args.videos.rglob("*") if v.suffix.lower() in VIDEO_EXT):
+    if args.videos.is_file():
+        videos = [args.videos]
+    else:
+        videos = sorted(v for v in args.videos.rglob("*") if v.suffix.lower() in VIDEO_EXT)
+    for video in videos:
         cap = cv2.VideoCapture(str(video))
         fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
         step = max(1, round(fps / args.fps))
