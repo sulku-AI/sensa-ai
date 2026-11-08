@@ -10,6 +10,9 @@ yapılandırmalarla indirme olmadan çalışır.
 
 from __future__ import annotations
 
+import contextlib
+import warnings
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -94,6 +97,7 @@ class TextDetector:
     def __init__(self, model: Any, processor: Any, device: str, box_threshold: float, text_threshold: float) -> None:
         self.model, self.processor, self.device = model, processor, device
         self.box_threshold, self.text_threshold = box_threshold, text_threshold
+        self.max_regions = int(config.load()["detect"]["max_regions"])  # karede bir kez değil, burada okunur
         mt = getattr(model.config, "model_type", "")
         self.family = "owlv2" if mt.startswith("owl") else "grounding"
 
@@ -133,8 +137,7 @@ class TextDetector:
                 target_sizes=[(h, w)],
             )[0]
         names = res["text_labels"] if "text_labels" in res else res.get("labels")
-        max_n = int(config.load()["detect"]["max_regions"])
-        order = res["scores"].argsort(descending=True)[:max_n]
+        order = res["scores"].argsort(descending=True)[: self.max_regions]
         return [
             Detection(
                 str(names[i]) if names is not None else "region",
@@ -143,6 +146,34 @@ class TextDetector:
             )
             for i in order.tolist()
         ]
+
+
+@contextlib.contextmanager
+def quiet_library_warnings() -> Iterator[None]:
+    """Model yüklenirken torch.jit / izleme (TracerWarning) uyarılarını gizler: zararsız ama ekranı dolduruyor
+    ve "bir şey mi bozuldu" diye düşündürüyor. Bizim kendi uyarılarımız ve hatalar görünmeye devam eder."""
+    import logging
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=FutureWarning, module=r"torch\..*")
+        warnings.filterwarnings("ignore", message=r".*TracerWarning.*")
+        warnings.filterwarnings("ignore", message=r"Converting a tensor to a Python .*")
+        warnings.filterwarnings("ignore", message=r".*torch\.jit\..* is deprecated.*")
+        try:
+            from torch.jit import TracerWarning
+
+            warnings.filterwarnings("ignore", category=TracerWarning)
+        except ImportError:
+            pass
+        noisy = [logging.getLogger(n) for n in ("rf-detr", "rfdetr", "torch.distributed.elastic")]
+        old = [lg.level for lg in noisy]
+        for lg in noisy:
+            lg.setLevel(logging.ERROR)
+        try:
+            yield
+        finally:
+            for lg, lv in zip(noisy, old, strict=True):
+                lg.setLevel(lv)
 
 
 def _optimize(model: Any) -> None:
@@ -188,6 +219,7 @@ class SegDetector:
     def __init__(self, model: Any, device: str, box_threshold: float, name: str) -> None:
         self.model, self.device, self.box_threshold, self.name = model, device, box_threshold, name
         self.text_threshold = box_threshold
+        self.max_regions = int(config.load()["detect"]["max_regions"])
 
     @classmethod
     def from_checkpoint(cls, path: str, device: str | None = None, fp16: bool | None = None) -> SegDetector:
@@ -197,16 +229,17 @@ class SegDetector:
             ck = Path(path)
         if not ck.exists():
             raise FileNotFoundError(f"kontrol noktası yok: {path} (Drive'dan indirip buraya koy)")
-        from rfdetr import RFDETRSegNano
-
         d = dev.pick(device)
-        try:
-            model = RFDETRSegNano(pretrain_weights=str(ck), num_classes=1, device=d)
-        except (TypeError, ValueError):  # yeni rfdetr: cihaz alanı yok, kendisi seçer
-            model = RFDETRSegNano(pretrain_weights=str(ck), num_classes=1)
-        use_fp16 = bool(p.get("seg_fp16", False)) if fp16 is None else fp16
-        if use_fp16 and d != "cpu":
-            _optimize(model)
+        with quiet_library_warnings():
+            from rfdetr import RFDETRSegNano
+
+            try:
+                model = RFDETRSegNano(pretrain_weights=str(ck), num_classes=1, device=d)
+            except (TypeError, ValueError):  # yeni rfdetr: cihaz alanı yok, kendisi seçer
+                model = RFDETRSegNano(pretrain_weights=str(ck), num_classes=1)
+            use_fp16 = bool(p.get("seg_fp16", False)) if fp16 is None else fp16
+            if use_fp16 and d != "cpu":
+                _optimize(model)
         return cls(model, d, float(p.get("seg_threshold", p["box_threshold"])), ck.name)
 
     def __call__(self, frame_bgr: np.ndarray, prompts: list[str]) -> list[Detection]:
@@ -214,8 +247,7 @@ class SegDetector:
 
         h, w = frame_bgr.shape[:2]
         res = self.model.predict(_to_pil(frame_bgr), threshold=self.box_threshold)
-        max_n = int(config.load()["detect"]["max_regions"])
-        order = np.argsort(-np.asarray(res.confidence))[:max_n]
+        order = np.argsort(-np.asarray(res.confidence))[: self.max_regions]
         masks = getattr(res, "mask", None)
         return [
             Detection(

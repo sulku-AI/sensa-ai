@@ -4,13 +4,15 @@
 
 Neden: ayna dokunuşu sinestezisi olan biri için kanlı bir görüntü fiziksel acı demek. Mevcut araçlar (ClearPlay, VidAngel) sahneyi atlıyor ya da sesi kesiyor; burada amaç filmin akışı sürerken yalnız rahatsız edici bölgeyi yumuşatmak.
 
-> **Durum (4 Kasım 2026):** M0 tamam; M1-M3 kodu yazıldı (model sarmalayıcıları, takip, değerlendirme, otomatik etiketleme, damıtma eğitimi, 30 sn ileri bakan canlı oynatıcı). Gerçek ağırlıklarla **hiçbir şey ölçülmedi**: ilk ölçüm M5'te, adımlar [docs/M5_KOMUTLAR.md](docs/M5_KOMUTLAR.md).
+> **Durum (8 Kasım 2026, sürüm 2.1.0):** Eğitilmiş RF-DETR-Seg Nano varsayılan dedektör (D-016); fotoğraf testinde yakalama 0,957, yanlış alarm 0,026 (küçük set). İlk gerçek dizi denemesinde kırmızı nesnelere çok yanlış alarm verdi (FA-04): 2.1 dizide ölçmeyi ve dizinin kendi hatalarından öğrenmeyi ekliyor ([docs/DIZI_VERISI.md](docs/DIZI_VERISI.md)). Değişiklikler: [CHANGELOG.md](CHANGELOG.md). Mac komutları: [docs/M5_KOMUTLAR.md](docs/M5_KOMUTLAR.md).
 
 ## Belgeler
 
 | Belge | İçerik |
 |---|---|
 | [docs/M5_KOMUTLAR.md](docs/M5_KOMUTLAR.md) | **MacBook Air M5'te sırayla çalıştırılacak komutlar** |
+| [docs/DIZI_VERISI.md](docs/DIZI_VERISI.md) | Dizide görmeden ölçme ve etiket düzeltme (2.1) |
+| [CHANGELOG.md](CHANGELOG.md) | Sürüm değişiklikleri |
 | [docs/YOL_HARITASI.md](docs/YOL_HARITASI.md) | Demo adımları M0 → M5, her adımın çıkış kapısı |
 | [docs/MODEL_ARASTIRMA.md](docs/MODEL_ARASTIRMA.md) | Model ve veri seti araştırması, lisanslar, kaynaklar |
 | [docs/MODEL_SECIMI.md](docs/MODEL_SECIMI.md) | SigLIP → Grounding DINO / OWLv2 → SAM 2.1 hattı, lisanslar, riskler |

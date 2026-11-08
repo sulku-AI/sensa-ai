@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sensa-ai"  # geçici ad, yeni isim bekleniyor (D-008)
-version = "0.1.0"
+version = "2.1.0"
 description = "Videoda kan/vahşet bölgelerini 30 sn önceden bulup hafifçe ve bölgesel bulanıklaştırma"
 readme = "README.md"
 license = {text = "MIT"}

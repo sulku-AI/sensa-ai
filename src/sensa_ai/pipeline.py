@@ -59,15 +59,22 @@ def analyze(video: Path, detector: Detector, prompts: list[str], tracker: Tracke
     i = 0
     while True:
         chunk: list[np.ndarray] = []
-        for _ in range(step):
-            ok, frame = cap.read()
+        n_read = 0
+        for k in range(step):
+            if tracker is None and k > 0:
+                # takipsiz hatta aradaki kareler yalnız atlanır: grab() renk çevirmez, kopyalamaz
+                ok = cap.grab()
+            else:
+                ok, frame = cap.read()
+                if ok:
+                    chunk.append(frame)
             if not ok:
                 break
-            chunk.append(frame)
+            n_read += 1
         if not chunk:
             break
         process_chunk(chunk, i / fps, fps, detector, prompts, tracker, bt.tracks, gap)
-        i += len(chunk)
+        i += n_read
         bt.analyzed_until_s = i / fps
     cap.release()
     bt.analyzed_until_s = duration
