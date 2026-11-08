@@ -185,7 +185,7 @@ def train(args: argparse.Namespace) -> None:
         "batch_size": args.batch,
         "grad_accum_steps": args.accum,
         "lr": args.lr,
-        "num_workers": 2,
+        "num_workers": args.workers,
         "early_stopping": True,
         "notes": {"proje": "sensa-ai", "veri": "docs/MODEL_ARASTIRMA.md §5"},
     }
@@ -222,6 +222,7 @@ def main() -> None:
     t.add_argument("--batch", type=int, default=2)
     t.add_argument("--accum", type=int, default=8)
     t.add_argument("--lr", type=float, default=1e-4)
+    t.add_argument("--workers", type=int, default=2, help="veri yükleme süreçleri (PC: çekirdek sayısı kadar)")
     t.add_argument("--device", default=None)
     t.add_argument("--out", type=Path, default=ROOT / "models" / "rfdetr_seg_nano", help="Colab: Drive klasörü")
     t.add_argument("--resume", type=Path, default=None, help="yarım kalan eğitim: <out>/last.ckpt")
