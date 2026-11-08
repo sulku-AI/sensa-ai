@@ -139,7 +139,9 @@ def prepare(args: argparse.Namespace) -> None:
         if raw := unrelabeled_videos(folder):
             raise SystemExit(
                 f"{folder}: {', '.join(raw)} etiketleri düzeltilmemiş (FA-04). Önce her video için:\n"
-                f"  python -m tools.relabel_events {folder} --video <video> --ranges <gerçek kan dakikaları>"
+                f"  python -m tools.relabel_events {folder} --video <video> --ranges <gerçek kan dakikaları>\n"
+                "Colab'da çıktıysa Drive'daki autolabel.tar eski, ham paket: relabel_events'ten sonra Mac'te "
+                "yeniden paketlenmiş autolabel.tar'ı yükle."
             )
     splits = split_items(collect(args.src, args.neg, args.train_only), args.aug_per_image)
     if OUT.exists():
