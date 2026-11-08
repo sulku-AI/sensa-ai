@@ -91,6 +91,7 @@ def main() -> None:
         "categories": [{"id": 1, "name": "blood"}],
     }
     stats: Counter[str] = Counter()
+    args.out.mkdir(parents=True, exist_ok=True)  # hiç kare yazılmasa da iz ve özet yazılabilsin
     per_minute: dict[str, list[int]] = {}  # video -> dakika başına işaretli örnek (≈ saniye, --fps 1'de)
 
     for video in sorted(v for v in args.videos.rglob("*") if v.suffix.lower() in VIDEO_EXT):
@@ -142,7 +143,6 @@ def main() -> None:
         bt.analyzed_until_s = bt.duration_s
         bt.save(args.out / f"{video.stem}.blurtrack.json")
 
-    args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "_annotations.coco.json").write_text(json.dumps(coco))
     out: dict[str, Any] = {**stats, "mod": "negatif" if args.negative else "pozitif", "min_skor": args.min_score}
     out["dakika_basina_isaretli"] = per_minute

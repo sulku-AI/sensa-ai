@@ -40,6 +40,12 @@ def patched(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setattr(models.TextDetector, "from_pretrained", staticmethod(det_fp))
     monkeypatch.setattr(models.SiglipGate, "from_pretrained", staticmethod(gate_fp))
     monkeypatch.setattr(tracking.Tracker, "from_pretrained", staticmethod(tr_fp))
+
+    def no_checkpoint(path: str, device: str | None = None, fp16: bool | None = None) -> models.SegDetector:
+        raise FileNotFoundError(path)  # Mac'teki gerçek eğitilmiş model teste karışmasın: küçük modele düş
+
+    monkeypatch.setattr(models.SegDetector, "from_checkpoint", staticmethod(no_checkpoint))
+    monkeypatch.setattr(models.dev, "pick", lambda prefer=None: prefer or "cpu")  # MPS/CUDA olan makinede de cpu
     return tmp_path
 
 
