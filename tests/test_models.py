@@ -96,5 +96,6 @@ def test_mask_to_box() -> None:
 
 def test_resolve_ids() -> None:
     assert models.resolve("detect").endswith("checkpoint_best_total.pth")  # D-016 (yoksa OWLv2'ye düşer)
+    assert models.resolve("audio") == "mispeech/ced-base"  # D-019
     assert models.resolve("detect", "owlv2_base").startswith("google/owlv2")
     assert models.resolve("detect", "x/y") == "x/y"

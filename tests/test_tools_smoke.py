@@ -78,7 +78,7 @@ def test_bench_runs(patched: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from tools import bench
 
     monkeypatch.setattr(bench, "ROOT", patched)
-    monkeypatch.setattr(sys, "argv", ["bench", "--frames", "4", "--res", "96"])
+    monkeypatch.setattr(sys, "argv", ["bench", "--frames", "4", "--res", "96", "--detector", "owlv2_base"])
     bench.main()
     res = json.loads(next((patched / "experiments" / "results").glob("*_bench_cpu.json")).read_text())
     assert res["realtime_factor"] > 0 and "takip_ms_kare" in res
@@ -93,7 +93,9 @@ def test_evaluate_runs(patched: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     cv2.imwrite(str(neg / "n.jpg"), np.full((120, 160, 3), 128, np.uint8))
     monkeypatch.setattr(evaluate, "ROOT", patched)
     monkeypatch.setattr(evaluate, "RESULTS", patched / "experiments" / "results")
-    monkeypatch.setattr(sys, "argv", ["ev", "--pos", str(pos), "--neg", str(neg), "--previews"])
+    monkeypatch.setattr(
+        sys, "argv", ["ev", "--pos", str(pos), "--neg", str(neg), "--previews", "--detector", "owlv2_base"]
+    )
     evaluate.main()
     res = json.loads(next((patched / "experiments" / "results").glob("*_eval_*.json")).read_text())
     assert res["pozitif_goruntu"] == 3 and res["negatif_goruntu"] == 1

@@ -165,6 +165,7 @@ def main(argv: list[str] | None = None) -> None:
     a.add_argument("--device", default=None)
     a.add_argument("--detector", default=None, help="models.yaml detect adı (ör. rfdetr_seg) ya da .pth yolu")
     a.add_argument("--no-gate", action="store_true", help="SigLIP kapısını kapat (eğitilmiş modelde önerilen)")
+    a.add_argument("--audio", default=None, help="ses ipucu (D-019): proxy ya da models.yaml audio adı (ör. ced_base)")
     r = sub.add_parser("render")
     r.add_argument("video", type=Path)
     r.add_argument("track", type=Path)
@@ -174,8 +175,10 @@ def main(argv: list[str] | None = None) -> None:
     config.set_profile(args.profile)
 
     if args.cmd == "analyze":
+        cand = float(config.load()["audio"]["candidate_threshold"]) if args.audio else None
         if args.proxy:
-            bt = analyze(args.video, ColorProxyDetector(), config.load_prompts()["proxy"])
+            proxy = ColorProxyDetector(scored=True, min_score=cand) if cand is not None else ColorProxyDetector()
+            bt = analyze(args.video, proxy, config.load_prompts()["proxy"])
         else:
             from . import models
             from .tracking import maybe_tracker
@@ -184,8 +187,23 @@ def main(argv: list[str] | None = None) -> None:
             # vekil istemle ("red balloon") kapı kapalı: kapının negatifleri kan için ayarlı
             gate = False if (args.prompts != "positive" or args.no_gate) else None
             det = models.build_default(device=args.device, use_gate=gate, detector=args.detector)
+            if cand is not None and isinstance(det.detector, models.SegDetector):
+                det.detector.box_threshold = cand  # ses desteği düşük skorlu adayı kurtarabilsin
             bt = analyze(args.video, det, config.load_prompts()[args.prompts], tracker)
         out = args.video.with_suffix(".blurtrack.json")
+        if args.audio:
+            from . import audio_cue
+
+            clf = audio_cue.make_classifier(args.audio, device=args.device)
+            n0 = len(bt.tracks)
+            bt, tl, decisions = audio_cue.run(args.video, bt, clf)
+            audio_cue.save_report(args.video.with_suffix(".audiocue.json"), tl, decisions, args.audio)
+            for dc in decisions:
+                print(
+                    f"  {dc.start:6.1f}-{dc.end:6.1f} sn  görüntü {dc.visual:.2f}  sıkıntı {dc.distress:.2f}  "
+                    f"mutfak {dc.kitchen:.2f}  -> {'TUT' if dc.keep else 'bırak'} ({dc.reason})"
+                )
+            print(f"ses ipucu: {n0} adaydan {len(bt.tracks)} iz tutuldu")
         bt.save(out)
         print(f"{len(bt.tracks)} iz -> {out}")
     else:

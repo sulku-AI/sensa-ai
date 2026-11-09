@@ -31,6 +31,21 @@ track:                 # Aşama C: SAM 2 ile maske takibi
   enabled:             {value: false, status: estimate, source: "D-016 (kullanıcı): RF-DETR-Seg kendi maskesini verir, takip yerine sık tespit. --mask-track ile açılır"}
   fps:                 {value: 6.0,  status: estimate, source: "Takip saniyede bu kadar karede; aradaki kareler iz ara değeriyle. M5 ölçümü: SAM 2.1 tiny 653 ms/kare, 24 fps takip analizin %87'si (experiments/results/2026-11-04_bench_mps_ilk_olcum.md)"}
 
+audio:                 # D-019 demo: ses ipucu (çığlık/bağırış güveni artırır, mutfak sesi azaltır). src/sensa_ai/audio_cue.py
+  enabled:             {value: false, status: estimate, source: "Demo: --audio ile açılır. Varsayılan, gerçek klip ölçümünden sonra kullanıcı kararıyla"}
+  rate:                {value: 16000, status: datasheet, source: "AST AudioSet modeli 16 kHz mono bekler (model kartı)"}
+  window_s:            {value: 3.0,  status: estimate, source: "Sınıflandırma penceresi; AST girdisi 10.24 sn'ye sıfırla doldurulur"}
+  hop_s:               {value: 1.0,  status: estimate, source: "Pencere kayması; saniyede 1 ses çıkarımı"}
+  pad_s:               {value: 2.0,  status: estimate, source: "İzin başından önce / sonundan sonra bu kadar ses de sayılır (çığlık kandan önce/sonra gelebilir)"}
+  candidate_threshold: {value: 0.15, status: estimate, source: "Ses açıkken dedektör bu düşük eşikle aday toplar; ses desteği yoksa keep_threshold altı bırakılır"}
+  keep_threshold:      {value: 0.30, status: estimate, source: "= detect.seg_threshold: ses nötrse (sıkıntı 0, mutfak 0) sonuç sessiz hatla aynı"}
+  sure_threshold:      {value: 0.60, status: estimate, source: "Görüntü bu kadar eminse ses izi kapatamaz (D-001: kaçırmak yanlış alarmdan pahalı)"}
+  distress_boost:      {value: 0.20, status: estimate, source: "Tam sıkıntı (çığlık) görüntü skoruna +0.20 ekler: 0.15 aday 0.35 olur"}
+  kitchen_penalty:     {value: 0.20, status: estimate, source: "Tam mutfak sesi -0.20: 0.30-0.50 arası izler bastırılır, 0.60 üstü asla"}
+  distress_full_at:    {value: 0.30, status: estimate, source: "Sıkıntı olasılığı bu değerde tam sayılır (AudioSet sigmoid çıktıları düşük kalır)"}
+  kitchen_full_at:     {value: 0.30, status: estimate, source: "Mutfak olasılığı bu değerde tam sayılır"}
+  violence_weight:     {value: 0.80, status: estimate, source: "Silah/patlama/kırılma sesi çığlıktan biraz az sayılır (aksiyon filminde kansız çok)"}
+
 blur:
   sigma_px:            {value: 18.0, status: estimate, source: "Hafif bulanıklık (1080p); kişiye göre ayarlanacak (M4)"}
   feather_px:          {value: 24,   status: estimate, source: "Maske kenarı yumuşatma, keskin kutu görünmesin"}
@@ -72,4 +87,6 @@ profiles:              # M4 hassasiyet profilleri: seçilen profil yukarıdaki d
     blur.ramp_in_s:        {value: 0.80, status: estimate, source: "M4"}
     gate.threshold:        {value: 0.15, status: estimate, source: "M4"}
     detect.seg_threshold:  {value: 0.20, status: estimate, source: "guclu: RF-DETR esiği 0.30 -> 0.20, ölçülmedi"}
+    audio.keep_threshold:  {value: 0.20, status: estimate, source: "= guclu detect.seg_threshold (ses nötrse sonuç sessiz hatla aynı)"}
+    audio.candidate_threshold: {value: 0.10, status: estimate, source: "guclu + ses: çığlık 0.10 adayı kurtarabilir"}
     detect.box_threshold:  {value: 0.18, status: estimate, source: "M4"}

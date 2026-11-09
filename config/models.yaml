@@ -16,7 +16,13 @@ track:
   sam2_small: facebook/sam2.1-hiera-small
   edgetam: facebook/EdgeTAM@refs/pr/1              # M5 ana hedef; transformers ağırlıkları yalnız HF PR #1'de (ana dalda yalnız edgetam.pt)
 
+audio:                                               # D-019 ses ipucu; karşılaştırma docs/SES_IPUCU.md
+  ced_base: mispeech/ced-base                        # Apache 2.0 (ağırlık + HF kodu), AudioSet mAP 50.0, 86M, değişken uzunluk; torchaudio ister
+  ced_small: mispeech/ced-small                      # Apache 2.0, mAP 49.6, 22M: M5'te yavaş kalırsa
+  ast_audioset: MIT/ast-finetuned-audioset-10-10-0.4593   # BSD-3-Clause, mAP 45.9, 87M, 10.24 sn'ye doldurur
+
 default:
   gate: siglip
   detect: rfdetr_seg               # D-016 (kullanıcı): kendi eğitimimiz, M5'te 25 ms; dosya yoksa owlv2_base'e düşer (D-014)
   track: edgetam                  # M5 ana hedef (D-012); 2060 için sam2_tiny
+  audio: ced_base                 # D-019: en yüksek mAP, izinli lisans, kısa pencerede hızlı

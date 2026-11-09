@@ -76,6 +76,34 @@ python -m tools.web_player --profile guclu
 
 Sayfa yalnız bulanıklaştırılmış tuvali gösterir; iz yüklenmeden ekran siyahtır. Boşluk tuşu oynat/duraklat.
 
+## 3c. Ses ipucu demosu (D-019, sen izleyebilirsin)
+
+Kırmızı kareler + sentetik sesler (yüksek ton = "çığlık", cızırtı = "mutfak"). Kan yok, gerçek çığlık yok.
+
+```bash
+python -m tools.audio_demo data/vekil/ses_demo.mp4
+python -m tools.web_player data/vekil/ses_demo.mp4
+```
+
+- `python -m tools.audio_demo data/vekil/ses_demo.mp4`: 45 sn video üretir, sessiz ve sesli hattı karşılaştıran tabloyu yazar, `ses_demo.blurtrack.json` (sesli hat) kaydeder
+- `python -m tools.web_player data/vekil/ses_demo.mp4`: sesli hattın bulanıklığını izlersin; sessiz hat için `--track data/vekil/ses_demo.sessiz.blurtrack.json`
+
+Oynatıcıda görüntü + ses birlikte (dizi bölümü için, tek komut):
+
+```bash
+python -m sensa_ai.player bolum.mp4 --profile guclu --audio
+```
+
+Kansız denemek için: `python -m sensa_ai.player data/vekil/ses_demo.mp4 --proxy --audio proxy`.
+
+Çevrimdışı iz için gerçek ses modeliyle (CED-Base, ilk çalıştırmada ~350 MB indirir; `pip install torchaudio` gerekir) kendi videonda:
+
+```bash
+python -m sensa_ai.pipeline analyze video.mp4 --audio ced_base
+```
+
+Her aday iz için bir satır yazar: görüntü skoru, sıkıntı, mutfak, karar (TUT / bırak) ve nedeni. Ayrıntı `video.audiocue.json`'da (görüntü yok, yalnız sayı). İlk satırda `modelde olmayan sınıf adları` uyarısı çıkarsa bana yaz (adlar bulutta doğrulanamadı).
+
 ## 4. Negatif set (H-02, sen izleyebilirsin)
 
 ```bash
@@ -86,6 +114,16 @@ python -m tools.evaluate --neg data/negatif/coco --previews
 - `python -m tools.fetch_negatives --per-class 40`: COCO: domates, şarap, kırmızı ışık, pizza...
 
 Sonuç: yanlış alarm oranı. `--previews` yanlış alarm veren negatiflerin güvenli küçük resmini `previews/negatif/` altına yazar.
+
+### 4b. Yemek programı klipleri ile ses ipucu (H-07)
+
+`data/negatif/yemek/` altına birkaç yemek programı klibi koy (kızartma, doğrama, et kesme sesi olan), her biri için `data/etiket/<ad>.json` içine `{"video": "<ad>.mp4", "events": []}` yaz.
+
+```bash
+python -m tools.eval_video data/negatif/yemek --labels data/etiket --audio ced_base
+```
+
+Her video iki satır verir: `sessiz` ve `sesli`. Bakılacak sütun `olay_disi_bulanik_s_dk`: sesli satırda düşük olmalı.
 
 ## 5. Pozitif set (H-01). Sen görmeden, yalnız sayı
 

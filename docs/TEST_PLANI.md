@@ -48,6 +48,7 @@ Metin özetleri **nötr şablonla** yazılır, betimleme yok: `klip 07 · 00:41-
 | H-04 | Bulanıklık izlemeyi bozmuyor | Vekil ve negatif klipler; bulanıklık doğal mı, rampa yeterince önce mi | Emirhan + ortak "rahatsız etmiyor" der | **Emirhan izleyebilir** |
 | H-05 | Karanlık sahnede de çalışır | Pozitif setin karanlık alt kümesi | H-01 ölçütü karanlıkta da | Model + ortak |
 | H-06 | Bölgeler bulanıklıktan sızmıyor (kenar, hızlı hareket) | Ortak bulanık çıktıyı izler, sızan kareyi zaman damgasıyla yazar | 0 sızan olay | Ortak |
+| H-07 (AÇIK; vekil demo 2026-11-07: `experiments/results/2026-11-07_ses_ipucu_vekil_demo.md`) | Ses ipucu kullanımda işe yarıyor: dizide kaçırmayı azaltır, yemek programında yanlış alarmı azaltır, ikisini de kötüleştirmez | Aynı aday izlerle sessiz ve sesli hat (`tools/eval_video --audio`): yemek/mutfak klipleri (negatif) + ortağın etiketlediği dizi sahneleri (pozitif) | Sesli hatta `olay_disi_bulanik_s_dk` düşer, `olay_yakalama` düşmez | Negatif: **Emirhan izleyebilir**. Pozitif: model + ortak |
 
 Kaçırma (yakalanmayan kan) yanlış alarmdan daha kötü: Emirhan için kaçırma fiziksel acı, yanlış alarm yalnız hafif bulanıklık. Bu yüzden eşikler önce yakalamaya göre ayarlanır, sonra yanlış alarm düşürülür.
 

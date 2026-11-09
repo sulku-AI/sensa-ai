@@ -58,10 +58,11 @@ src/sensa_ai/
   metrics.py              kapsama ve yanlış alarm ölçütleri (yalnız sayı)
   pipeline.py             çevrimdışı analyze / render (ses ffmpeg ile)
   audio.py                ses ana saat (PyAV + sounddevice)
+  audio_cue.py            ses ipucu: çığlık güveni artırır, mutfak sesi azaltır (D-019)
   player.py               canlı oynatıcı: analiz iş parçacığı + bulanıklık
 tools/                    bench, evaluate, autolabel, fetch_datasets, fetch_negatives,
                           train_rfdetr, make_proxy_video, eval_video, before_after,
-                          label_events, web_player
+                          label_events, web_player, audio_demo
 web/                      tarayıcı oynatıcısı: blurtrack.js (iz mantığı, eklenti çekirdeği) + player.html
 tests/                    sentetik, kansız testler (model testleri rastgele ağırlıkla, indirmesiz)
 data/                     yerel veri (repoya girmez), bkz. data/README.md
@@ -71,4 +72,4 @@ archive/                  eski Faster R-CNN kodu, değiştirilmeden
 
 ## Lisans
 
-MIT. Kullanılan modeller (SigLIP, LLMDet, Grounding DINO, OWLv2, SAM 2.1, EdgeTAM, RF-DETR-Seg) Apache 2.0.
+MIT. Kullanılan modeller (SigLIP, LLMDet, Grounding DINO, OWLv2, SAM 2.1, EdgeTAM, RF-DETR-Seg) Apache 2.0; ses ipucu modeli CED-Base Apache 2.0 (seçenek AST, BSD-3).

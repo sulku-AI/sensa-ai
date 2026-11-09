@@ -22,3 +22,35 @@ negative:
 # Vekil (proxy) istem: boru hattını kan olmadan uçtan uca sınamak için (D-005).
 proxy:
   - red balloon
+
+# Ses ipucu (D-019): AudioSet sınıf adları (AST modelinin id2label'i). Modelde olmayan ad uyarıyla yok sayılır.
+# Grup olasılığı = gruptaki en yüksek sınıf. Kullanım: src/sensa_ai/audio_cue.py
+audio_vocal:            # güveni artırır
+  - Screaming
+  - Shout
+  - Yell
+  - Battle cry
+  - Children shouting
+  - Crying, sobbing
+  - Whimper
+  - Wail, moan
+  - Groan
+  - Gasp
+
+audio_violence:         # güveni artırır (audio.violence_weight ile)
+  - Gunshot, gunfire
+  - Machine gun
+  - Fusillade
+  - Explosion
+  - Slap, smack
+  - Smash, crash
+  - Shatter
+
+audio_kitchen:          # güveni azaltır (yemek programı, mutfak sahnesi)
+  - Frying (food)
+  - Sizzle
+  - Chopping (food)
+  - Dishes, pots, and pans
+  - Cutlery, silverware
+  - Microwave oven
+  - Blender
