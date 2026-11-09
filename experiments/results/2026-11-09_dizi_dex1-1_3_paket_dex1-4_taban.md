@@ -73,3 +73,13 @@ Taban (eşik 0.3), kan dışı dakikada yanlış alarm:
 `autolabel_tur2.tar` (ikinci eğitim): 578 062 848 bayt, sha256
 `a08805e86d987572c1f0917cddd691ec45c42ed183ed45b1bd3b6b71c3592425`; dex1-1/2/3/5/6, 3129 görüntü,
 41 pozitif. dex1-4 hiçbir pakette yok.
+
+## 6. Son ikinci tur paketi (dex1-7, dex1-8 eklendi)
+
+`autolabel_tur2.tar`: 803 834 368 bayt, sha256 `9158986c8534a1312e10f4f21053e8f2fe15401c3f650bd10945043f472e3174`;
+dex1-1/2/3/5/6/7/8, dex1-4 yok. Bölümler tam hızda işlendi (1289 sn).
+
+| bölüm | `--ranges` | `--unsure` | zor negatif | boş negatif | pozitif |
+|---|---|---|---|---|---|
+| dex1-7 | (aday yok) | 0-3,4-5,7-9,27-30,38-39,46-47 | 438 | 169 | 0 |
+| dex1-8 | 1-2,3-4,8-10,21-22,42-44,48-49 | (rapor edilmedi) | 357 | 136 | 23 |
