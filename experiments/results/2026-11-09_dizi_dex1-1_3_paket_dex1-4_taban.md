@@ -83,3 +83,16 @@ dex1-1/2/3/5/6/7/8, dex1-4 yok. Bölümler tam hızda işlendi (1289 sn).
 |---|---|---|---|---|---|
 | dex1-7 | (aday yok) | 0-3,4-5,7-9,27-30,38-39,46-47 | 438 | 169 | 0 |
 | dex1-8 | 1-2,3-4,8-10,21-22,42-44,48-49 | (rapor edilmedi) | 357 | 136 | 23 |
+
+## 7. Üçüncü tur paketi (dex1-9, dex1-10)
+
+`autolabel_tur3.tar`: 1 057 878 528 bayt, sha256 `1be6d8aa08582ab65dc8996e097bea1ba1bc3f4a59f9f1170e94d723282e312e`;
+dex1-1/2/3/5/6/7/8/9/10, dex1-4 yok. Drive `sensa_ai/` ile Linux'a (çıktı `rfdetr_v2b_dizi4`).
+
+| bölüm | `--ranges` | `--unsure` | zor negatif | boş negatif | pozitif |
+|---|---|---|---|---|---|
+| dex1-9 | (aday yok) | 1-4,23-24 | 526 | - | 0 |
+| dex1-10 | 8-9,35-36,52-53 | 0-3,7-8,9-10,23-25,34-35,36-37,47-49,51-52,53-54 | 432 | 137 | 7 |
+
+Linux: 1. eğitim (dex1-1..3) 23. turda erken durdu, 2. eğitim (dex1-1..8, 4 hariç) bitti; fotoğraf testinde
+ikisi de yakalama 0.957, yanlış alarm 1/99 ve 0/99. Dizi ölçümü (dex1-4/5/6) checkpoint'ler Mac'e gelince.
