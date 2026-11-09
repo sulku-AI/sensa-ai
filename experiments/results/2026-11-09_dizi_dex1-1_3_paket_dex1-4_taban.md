@@ -48,3 +48,28 @@ Kan dışı 49.7 dk, 360 belirsiz örnek sayılmadı. Hedef `requirements.false_
 
 Linux PC'de (RTX 2060) `rfdetr_v2b_dizi` eğitimi ([docs/PC_EGITIM.md](../../docs/PC_EGITIM.md)),
 sonra aynı komutla dex1-4'te üç model. Varsayılan modeli kullanıcı seçer.
+
+## 5. Ek: dex1-5 ve dex1-6, ikinci tur paketi
+
+Bölümler 53.4 ve 52.9 dk. Mac ısınmasın diye arka plan önceliğinde, 2 çekirdekle çalıştı (bölüm başına
+~22 dk). Bu geceki ilk modelin (1-3) görmediği bölümler: ilk model 4, 5 ve 6'da ölçülür.
+
+| bölüm | `--ranges` | `--unsure` |
+|---|---|---|
+| dex1-5 | 1-2 | 0-1,2-3,50-51 |
+| dex1-6 | 2-3,40-41,43-45 | 1-2,3-4,8-9,24-26,39-40,41-43,45-46 |
+
+relabel: dex1-5 zor negatif 499, boş 229, pozitif 7 (atıldı 47, belirsiz 98, fazla negatif 329);
+dex1-6 zor negatif 404, boş 201, pozitif 14 (atıldı 129, belirsiz 293, fazla negatif 231).
+
+Taban (eşik 0.3), kan dışı dakikada yanlış alarm:
+
+| bölüm | v1 | v2b | yakalanan |
+|---|---|---|---|
+| dex1-4 | 2.655 | 2.414 | 2/2, 2/2 |
+| dex1-5 | 2.594 | 1.601 | 1/1, 1/1 |
+| dex1-6 | 2.232 | 2.258 | 3/3, 3/3 |
+
+`autolabel_tur2.tar` (ikinci eğitim): 578 062 848 bayt, sha256
+`a08805e86d987572c1f0917cddd691ec45c42ed183ed45b1bd3b6b71c3592425`; dex1-1/2/3/5/6, 3129 görüntü,
+41 pozitif. dex1-4 hiçbir pakette yok.
