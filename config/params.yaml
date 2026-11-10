@@ -33,6 +33,12 @@ track:                 # Aşama C: SAM 2 ile maske takibi
   enabled:             {value: false, status: estimate, source: "D-016 (kullanıcı): RF-DETR-Seg kendi maskesini verir, takip yerine sık tespit. --mask-track ile açılır"}
   fps:                 {value: 6.0,  status: estimate, source: "Takip saniyede bu kadar karede; aradaki kareler iz ara değeriyle. M5 ölçümü: SAM 2.1 tiny 653 ms/kare, 24 fps takip analizin %87'si (experiments/results/2026-11-04_bench_mps_ilk_olcum.md)"}
 
+verify:                # Kırpım doğrulayıcı (Y3, D-023): bölge "kan mı, kırmızı ama kan değil mi". src/sensa_ai/verify.py
+  enabled:             {value: false, status: estimate, source: "Baş eğitilip görülmemiş bölümde ölçülene kadar kapalı. Denemek için dedektör adı sonuna +dogrula"}
+  head:                {value: "models/verifier/head.npz", status: estimate, source: "tools.train_verifier çıktısı (repoya girmez)"}
+  threshold:           {value: 0.30, status: estimate, source: "Bölge bu olasılığın altındaysa atılır. Kaçırmamak için düşük başlar; train_verifier tablosuna göre ayarlanacak"}
+  margin:              {value: 0.25, status: estimate, source: "Kırpım, kutunun bu oranı kadar genişletilir (bağlam). Ölçülmedi"}
+
 blur:
   sigma_px:            {value: 18.0, status: estimate, source: "Hafif bulanıklık (1080p); kişiye göre ayarlanacak (M4)"}
   feather_px:          {value: 24,   status: estimate, source: "Maske kenarı yumuşatma, keskin kutu görünmesin"}

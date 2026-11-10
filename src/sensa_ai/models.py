@@ -88,6 +88,35 @@ class SiglipGate:
         return float(probs[: len(positive)].sum())
 
 
+class SiglipEmbedder:
+    """Kırpım doğrulayıcı için görüntü gömmesi (`verify.Embed`): SigLIP görüntü kulesi, metin yok."""
+
+    def __init__(self, model: Any, processor: Any, device: str, batch: int = 32) -> None:
+        self.model, self.processor, self.device, self.batch = model, processor, device, batch
+
+    @classmethod
+    def from_pretrained(cls, model_id: str | None = None, device: str | None = None) -> SiglipEmbedder:
+        from transformers import AutoModel, AutoProcessor
+
+        d = dev.pick(device)
+        mid = model_id or resolve("gate")
+        model = AutoModel.from_pretrained(mid, dtype=dev.dtype_for(d)).to(d).eval()
+        return cls(model, AutoProcessor.from_pretrained(mid), d)
+
+    def __call__(self, crops_bgr: list[np.ndarray]) -> np.ndarray:
+        import torch
+
+        out: list[np.ndarray] = []
+        for i in range(0, len(crops_bgr), self.batch):
+            inputs = self.processor(images=[_to_pil(c) for c in crops_bgr[i : i + self.batch]], return_tensors="pt")
+            pix = inputs["pixel_values"].to(self.device).to(self.model.dtype)
+            with torch.no_grad():
+                feats = self.model.get_image_features(pixel_values=pix)
+            feats = getattr(feats, "pooler_output", feats)  # transformers sürümüne göre tensör ya da çıktı nesnesi
+            out.append(feats.float().cpu().numpy())
+        return np.concatenate(out) if out else np.zeros((0, 1), np.float32)
+
+
 class TextDetector:
     """Aşama B: metin istemli kutular. LLMDet / MM-Grounding-DINO / Grounding DINO / OWLv2.
 
@@ -192,12 +221,39 @@ def _optimize(model: Any) -> None:
             return
 
 
-def detector_name(det: TextDetector | SegDetector) -> str:
-    return det.name if isinstance(det, SegDetector) else str(det.model.name_or_path)
+def detector_name(det: Any) -> str:
+    inner = getattr(det, "detector", det)  # VerifiedDetector sarmalıysa içteki
+    base = inner.name if isinstance(inner, SegDetector) else str(inner.model.name_or_path)
+    return base if inner is det else f"{base}+dogrula"
 
 
-def make_detector(name: str | None = None, device: str | None = None) -> TextDetector | SegDetector:
-    """models.yaml adı, HF kimliği, `rfdetr:<yol>` ya da `.pth` yolu -> dedektör."""
+VERIFY_SUFFIX = "+dogrula"
+
+
+def make_detector(name: str | None = None, device: str | None = None) -> Any:
+    """models.yaml adı, HF kimliği, `rfdetr:<yol>` ya da `.pth` yolu -> dedektör.
+
+    Ad `+dogrula` ile biterse ya da ad verilmemiş ve params `verify.enabled` açıksa dedektör kırpım
+    doğrulayıcıyla sarılır (`verify.VerifiedDetector`, baş dosyası params `verify.head`)."""
+    v = config.load().get("verify", {})
+    if name and name.endswith(VERIFY_SUFFIX):
+        return with_verifier(_make_detector(name.removesuffix(VERIFY_SUFFIX) or None, device), device)
+    det = _make_detector(name, device)
+    return with_verifier(det, device) if name is None and v.get("enabled", False) else det
+
+
+def with_verifier(det: Any, device: str | None = None) -> Any:
+    from .verify import Head, VerifiedDetector
+
+    v = config.load()["verify"]
+    path = Path(v["head"]) if Path(v["head"]).is_absolute() else config.ROOT / v["head"]
+    if not path.exists():
+        raise FileNotFoundError(f"doğrulayıcı başı yok: {path} (tools.train_verifier ile eğit)")
+    embed = SiglipEmbedder.from_pretrained(device=device)
+    return VerifiedDetector(det, embed, Head.load(path), float(v["threshold"]), float(v["margin"]))
+
+
+def _make_detector(name: str | None = None, device: str | None = None) -> TextDetector | SegDetector:
     mid = resolve("detect", name.removeprefix("rfdetr:") if name else None)
     if (name or "").startswith("rfdetr:") or mid.endswith(".pth"):
         try:
