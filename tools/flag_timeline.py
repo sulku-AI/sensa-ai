@@ -12,6 +12,8 @@ iki sayı çıkarır:
     requirements.false_alarm_per_min) ve işaretli saniye oranı
 `--judge` ile ikinci görüş alınırsa iki öneri çıkar: aday kan dakikaları (`--ranges` için) ve emin
 olunmayan dakikalar (`--unsure` için: eğitime de yanlış alarm sayımına da girmez). Eşikler params `dizi`.
+`--min-hits 2,3` (en iyi `--fps 6` ile, oynatıcının hızı): zamansal filtrenin (params track.min_hits,
+strong_score) etkisini ek sütun olarak ölçer; ilk dedektörün kısa işaret koşuları atılmış hâli.
 Sonuç: experiments/results/<tarih>_isaret_<video>_e<eşik>[_hakem].md (+ .json), eski sonucun üstüne
 yazılmaz. Yalnız sayı.
 """
@@ -137,6 +139,30 @@ def summarize(
     return out
 
 
+def drop_short_runs(
+    times: list[float], scores: list[float], min_hits: int, max_gap_s: float, strong_score: float
+) -> list[bool]:
+    """Zamansal filtrenin kare düzeyi vekili (`Track.confirmed`): art arda işaretli örnekler (arada en çok
+    `max_gap_s` boşluk) bir koşudur; `min_hits`'ten kısa koşu, içinde `strong_score` üstü skor yoksa atılır."""
+    keep = [False] * len(times)
+    run: list[int] = []
+
+    def close() -> None:
+        if run and (len(run) >= min_hits or max(scores[j] for j in run) >= strong_score):
+            for j in run:
+                keep[j] = True
+        run.clear()
+
+    for i, (t, s) in enumerate(zip(times, scores, strict=True)):
+        if s <= 0:
+            continue
+        if run and t - times[run[-1]] > max_gap_s + 1e-9:
+            close()
+        run.append(i)
+    close()
+    return keep
+
+
 def unsure_ranges(minutes: list[int], min_s: int, unsure_s: int, margin_min: int) -> str:
     """Emin olunmayan dakikalar: `unsure_s`..`min_s` arası ortak saniyesi olanlar ve aday kan
     dakikalarının `margin_min` önü / arkası (aday dakikaların kendisi hariç). Biçim candidate_ranges gibi."""
@@ -196,6 +222,7 @@ def main() -> None:
     )
     ap.add_argument("--unsure", default=None, help='emin olunmayan aralıklar: sayımdan çıkar, ör. "16-17,28-30"')
     ap.add_argument("--judge-min-s", type=int, default=None, help="aday kan dakikası için en az ortak saniye")
+    ap.add_argument("--min-hits", default=None, help='zamansal filtre denemesi, ör. "2,3" (--fps 6 ile)')
     ap.add_argument("--device", default=None)
     ap.add_argument("--profile", default=None)
     ap.add_argument("--results", type=Path, default=ROOT / "experiments" / "results")
@@ -243,6 +270,12 @@ def main() -> None:
         n: summarize(times, [s > 0 for s in sc], duration, ranges, 1 / args.fps, unsure)
         for n, sc in zip(names, scores, strict=True)
     }
+    for k in [int(v) for v in (args.min_hits or "").split(",") if v.strip()]:
+        tr = p["track"]
+        kept = drop_short_runs(times, scores[0], k, float(tr["max_gap_s"]), float(tr["strong_score"]))
+        col = f"{names[0]} k={k}"
+        rows[col] = summarize(times, kept, duration, ranges, 1 / args.fps, unsure)
+        names.append(col)
     suggestion = unsure_text = ""
     if judges:  # ilk dedektör ve bütün hakemler birlikte "kan" diyorsa
         agree = [all(sc[j] > 0 for sc in [scores[0], *scores[len(dets) :]]) for j in range(len(times))]

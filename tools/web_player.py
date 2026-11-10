@@ -33,7 +33,8 @@ def params_json(profile: str | None = None) -> dict:
     if profile is not None and profile not in config.load_raw().get("profiles", {}):
         raise ValueError(f"bilinmeyen profil: {profile}")
     cfg = config.load(profile=profile)
-    return {"lookahead": cfg["lookahead"], "blur": cfg["blur"], "profile": profile or "orta"}
+    track = {k: cfg["track"][k] for k in ("min_hits", "strong_score") if k in cfg["track"]}
+    return {"lookahead": cfg["lookahead"], "blur": cfg["blur"], "track": track, "profile": profile or "orta"}
 
 
 def make_handler(video: Path | None, track: Path | None, profile: str | None) -> type[BaseHTTPRequestHandler]:
