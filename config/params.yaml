@@ -28,6 +28,8 @@ detect:                # Aşama B: metinle bölge bulma (Grounding DINO / OWLv2)
 
 track:                 # Aşama C: SAM 2 ile maske takibi
   max_gap_s:           {value: 1.0,  status: estimate, source: "Bu kadar tespit gelmezse iz kapanır"}
+  min_hits:            {value: 1,    status: estimate, source: "Zamansal filtre: iz en az bu kadar tespit taşımazsa bulanıklaştırılmaz (tek karelik yanlış alarmları eler). 1 = kapalı; dizide ölçülünce açılacak (flag_timeline --fps 6 --min-hits 2,3). Maske takibi açıkken etkisiz (her kare anahtar kare)"}
+  strong_score:        {value: 0.70, status: estimate, source: "min_hits'i tutturamayan kısa iz, bir tespiti bu skoru geçerse yine bulanıklaştırılır (kısa ama emin kan anı kaçmasın). Ölçülmedi"}
   enabled:             {value: false, status: estimate, source: "D-016 (kullanıcı): RF-DETR-Seg kendi maskesini verir, takip yerine sık tespit. --mask-track ile açılır"}
   fps:                 {value: 6.0,  status: estimate, source: "Takip saniyede bu kadar karede; aradaki kareler iz ara değeriyle. M5 ölçümü: SAM 2.1 tiny 653 ms/kare, 24 fps takip analizin %87'si (experiments/results/2026-11-04_bench_mps_ilk_olcum.md)"}
 

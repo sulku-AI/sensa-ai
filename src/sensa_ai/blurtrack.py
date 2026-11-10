@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from typing import Any
 
 FORMAT_VERSION = 1
 
@@ -46,6 +47,11 @@ class Track:
     def end(self) -> float:
         return self.keyframes[-1].t
 
+    def confirmed(self, min_hits: int = 1, strong_score: float = 1.0) -> bool:
+        """Zamansal filtre: iz en az `min_hits` tespit taşıyorsa ya da tek tespiti bile çok eminse
+        (`strong_score`) bulanıklaştırılır. Tek karelik titreme yanlış alarmlarını eler."""
+        return len(self.keyframes) >= min_hits or max(k.score for k in self.keyframes) >= strong_score
+
     def poly_at(self, t: float, box: Box) -> list[Poly] | None:
         """En yakın anahtar karenin poligonu, kutunun kaymasına göre ötelenir."""
         kf = min(self.keyframes, key=lambda k: abs(k.t - t))
@@ -80,6 +86,8 @@ class BlurTrack:
         ramp_out_s: float = 0.0,
         hold_in_s: float = 0.0,
         hold_out_s: float = 0.0,
+        min_hits: int = 1,
+        strong_score: float = 1.0,
     ) -> list[Region]:
         """t anında bulanıklaştırılacak bölgeler (kutu, güç 0..1, varsa poligon).
 
@@ -88,10 +96,11 @@ class BlurTrack:
             [end + hold_out] 1→0 rampa [end + hold_out + ramp_out]
         hold_in / hold_out örnekleme aralığını kapatır: bölge ilk tespitten en çok bir örnek
         aralığı önce belirmiş, son tespitten bir aralık sonra kaybolmuş olabilir. İleri bakma bunu mümkün kılar.
+        `min_hits` / `strong_score`: onaylanmamış kısa izler atlanır (`Track.confirmed`).
         """
         out: list[Region] = []
         for tr in self.tracks:
-            if not tr.keyframes:
+            if not tr.keyframes or not tr.confirmed(min_hits, strong_score):
                 continue
             box = tr.box_at(t)
             first, last = tr.keyframes[0], tr.keyframes[-1]
@@ -109,7 +118,7 @@ class BlurTrack:
         return out
 
     def active(
-        self, t: float, ramp_in_s: float = 0.0, ramp_out_s: float = 0.0, **hold: float
+        self, t: float, ramp_in_s: float = 0.0, ramp_out_s: float = 0.0, **hold: Any
     ) -> list[tuple[Box, float]]:
         """Geriye uyumluluk: yalnız (kutu, güç)."""
         return [(r.box, r.strength) for r in self.active_regions(t, ramp_in_s, ramp_out_s, **hold)]

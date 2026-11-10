@@ -2,19 +2,30 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import cv2
 import numpy as np
 
 from .blurtrack import Box, Region
 
 
-def timing(b: dict, sample_fps: float | None = None) -> dict[str, float]:
-    """params.yaml blur bölümünden active_regions zamanlaması. hold = bir örnekleme aralığı."""
+def timing(b: dict, sample_fps: float | None = None) -> dict[str, Any]:
+    """params.yaml blur bölümünden active_regions zamanlaması. hold = bir örnekleme aralığı.
+    Zamansal filtre (track.min_hits / strong_score) de buradan gider: oynatıcı, render ve web aynı kuralı kullanır."""
     from . import config
 
-    sfps = sample_fps or float(config.load()["lookahead"]["sample_fps"])
+    p = config.load()
+    sfps = sample_fps or float(p["lookahead"]["sample_fps"])
     hold = float(b.get("hold_factor", 1.0)) / sfps
-    return {"ramp_in_s": b["ramp_in_s"], "ramp_out_s": b["ramp_out_s"], "hold_in_s": hold, "hold_out_s": hold}
+    return {
+        "ramp_in_s": b["ramp_in_s"],
+        "ramp_out_s": b["ramp_out_s"],
+        "hold_in_s": hold,
+        "hold_out_s": hold,
+        "min_hits": int(p["track"].get("min_hits", 1)),
+        "strong_score": float(p["track"].get("strong_score", 1.0)),
+    }
 
 
 def box_mask(shape: tuple[int, int], boxes: list[tuple[Box, float]], dilate_px: int, feather_px: int) -> np.ndarray:

@@ -212,3 +212,23 @@ def test_prepare_refuses_unrelabeled_series_frames(tmp_path: Path) -> None:
         tr.prepare(args)
     (al / "_annotations.coco.json").write_text(json.dumps({**coco, "annotations": [], "relabel": {"dex1-1": {}}}))
     assert tr.unrelabeled_videos(al) == []
+
+
+def test_temporal_filter_drops_flicker_keeps_runs_and_strong_hits() -> None:
+    from sensa_ai.blurtrack import BlurTrack, Keyframe, Track
+    from tools import flag_timeline as ft
+
+    box = (0.1, 0.1, 0.2, 0.2)
+    flicker = Track("x", [Keyframe(1.0, box, 0.4)])
+    strong = Track("x", [Keyframe(3.0, box, 0.9)])
+    run = Track("x", [Keyframe(5.0, box, 0.4), Keyframe(5.2, box, 0.4)])
+    bt = BlurTrack("v", 10.0, 10.0, [flicker, strong, run])
+    assert len(bt.active_regions(1.0)) == 1  # varsayılan: filtre kapalı
+    assert bt.active_regions(1.0, min_hits=2, strong_score=0.7) == []
+    assert len(bt.active_regions(3.0, min_hits=2, strong_score=0.7)) == 1
+    assert len(bt.active_regions(5.1, min_hits=2, strong_score=0.7)) == 1
+
+    times = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]
+    scores = [0.4, 0.0, 0.0, 0.9, 0.0, 0.4, 0.4, 0.0]
+    assert ft.drop_short_runs(times, scores, 2, 1.0, 0.7) == [False, False, False, True, False, True, True, False]
+    assert ft.drop_short_runs(times, scores, 1, 1.0, 0.7) == [s > 0 for s in scores]

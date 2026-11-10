@@ -39,14 +39,19 @@ export function polyAt(tr, t, box) {
   return kf.poly.map((p) => p.map((v, i) => v + (i % 2 === 0 ? dx : dy)));
 }
 
-// timing: {ramp_in_s, ramp_out_s, hold_in_s, hold_out_s} (sensa_ai.blur.timing ile aynı)
+// Zamansal filtre (Track.confirmed ile aynı): kısa iz ancak çok eminse bulanıklaştırılır.
+export function confirmed(tr, minHits = 1, strongScore = 1) {
+  return tr.keyframes.length >= minHits || Math.max(...tr.keyframes.map((k) => k.score)) >= strongScore;
+}
+
+// timing: {ramp_in_s, ramp_out_s, hold_in_s, hold_out_s, min_hits, strong_score} (sensa_ai.blur.timing ile aynı)
 export function activeRegions(bt, t, timing = {}) {
   const ri = timing.ramp_in_s ?? 0, ro = timing.ramp_out_s ?? 0;
   const hi = timing.hold_in_s ?? 0, ho = timing.hold_out_s ?? 0;
   const out = [];
   for (const tr of bt.tracks) {
     const kf = tr.keyframes;
-    if (!kf.length) continue;
+    if (!kf.length || !confirmed(tr, timing.min_hits ?? 1, timing.strong_score ?? 1)) continue;
     const first = kf[0], last = kf[kf.length - 1];
     const start = first.t, end = last.t;
     const a = start - hi, b = end + ho;
@@ -69,5 +74,9 @@ export function mode(bt, t, safeMarginS) {
 // params: /params.json (tools/web_player). blur.timing ile aynı hesap.
 export function timingFrom(params) {
   const b = params.blur, hold = (b.hold_factor ?? 1) / params.lookahead.sample_fps;
-  return { ramp_in_s: b.ramp_in_s, ramp_out_s: b.ramp_out_s, hold_in_s: hold, hold_out_s: hold };
+  const tr = params.track ?? {};
+  return {
+    ramp_in_s: b.ramp_in_s, ramp_out_s: b.ramp_out_s, hold_in_s: hold, hold_out_s: hold,
+    min_hits: tr.min_hits ?? 1, strong_score: tr.strong_score ?? 1,
+  };
 }

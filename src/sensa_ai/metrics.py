@@ -102,7 +102,7 @@ def _overlaps(a: Box, b: Box) -> bool:
     return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
 
 
-def event_scores(track: BlurTrack, events: list[Event], step_s: float = 0.1, **timing: float) -> dict[str, float]:
+def event_scores(track: BlurTrack, events: list[Event], step_s: float = 0.1, **timing: Any) -> dict[str, float]:
     """H-01 video düzeyi: olay yakalama, kare kapsama, geç başlama, olay dışı bulanıklık (H-02).
 
     Bir an "kapsanmış" sayılır: o anda en az bir bulanık bölge var ve (etiket kutusu varsa) onunla örtüşüyor.
