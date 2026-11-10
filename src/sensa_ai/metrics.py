@@ -8,6 +8,7 @@ ayrıca sayılır, çünkü gereksiz bulanıklık izlemeyi bozar (H-04).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 import cv2
 import numpy as np

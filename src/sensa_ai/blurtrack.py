@@ -117,9 +117,7 @@ class BlurTrack:
                 out.append(Region(last.box, 1.0 - (t - b) / ramp_out_s, last.poly))
         return out
 
-    def active(
-        self, t: float, ramp_in_s: float = 0.0, ramp_out_s: float = 0.0, **hold: Any
-    ) -> list[tuple[Box, float]]:
+    def active(self, t: float, ramp_in_s: float = 0.0, ramp_out_s: float = 0.0, **hold: Any) -> list[tuple[Box, float]]:
         """Geriye uyumluluk: yalnız (kutu, güç)."""
         return [(r.box, r.strength) for r in self.active_regions(t, ramp_in_s, ramp_out_s, **hold)]
 
