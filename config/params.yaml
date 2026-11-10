@@ -28,13 +28,13 @@ detect:                # Aşama B: metinle bölge bulma (Grounding DINO / OWLv2)
 
 track:                 # Aşama C: SAM 2 ile maske takibi
   max_gap_s:           {value: 1.0,  status: estimate, source: "Bu kadar tespit gelmezse iz kapanır"}
-  min_hits:            {value: 1,    status: estimate, source: "Zamansal filtre: iz en az bu kadar tespit taşımazsa bulanıklaştırılmaz (tek karelik yanlış alarmları eler). 1 = kapalı; dizide ölçülünce açılacak (flag_timeline --fps 6 --min-hits 2,3). Maske takibi açıkken etkisiz (her kare anahtar kare)"}
+  min_hits:            {value: 2,    status: measured, source: "Zamansal filtre: iz en az bu kadar tespit taşımazsa bulanıklaştırılmaz (tek karelik yanlış alarmları eler). 1 = kapalı. dex3-4 (görülmemiş bölüm, 6 fps, v2b_dizi): dakikada yanlış alarm 0.69 -> 0.49 (k=2), 0.41 (k=3), aralık içi oran değişmedi; kapsama kanıtı zayıf (tek aralık, hakem önerisi). experiments/results/2026-11-10_yanlis_alarm_Y1-Y3_dex3-4.md. Maske takibi açıkken etkisiz"}
   strong_score:        {value: 0.70, status: estimate, source: "min_hits'i tutturamayan kısa iz, bir tespiti bu skoru geçerse yine bulanıklaştırılır (kısa ama emin kan anı kaçmasın). Ölçülmedi"}
   enabled:             {value: false, status: estimate, source: "D-016 (kullanıcı): RF-DETR-Seg kendi maskesini verir, takip yerine sık tespit. --mask-track ile açılır"}
   fps:                 {value: 6.0,  status: estimate, source: "Takip saniyede bu kadar karede; aradaki kareler iz ara değeriyle. M5 ölçümü: SAM 2.1 tiny 653 ms/kare, 24 fps takip analizin %87'si (experiments/results/2026-11-04_bench_mps_ilk_olcum.md)"}
 
 verify:                # Kırpım doğrulayıcı (Y3, D-023): bölge "kan mı, kırmızı ama kan değil mi". src/sensa_ai/verify.py
-  enabled:             {value: false, status: estimate, source: "Baş eğitilip görülmemiş bölümde ölçülene kadar kapalı. Denemek için dedektör adı sonuna +dogrula"}
+  enabled:             {value: false, status: measured, source: "Kapalı: dex3-4'te tek başına %12 kazanç (0.69 -> 0.61), zamansal filtrenin üstüne ek kazanç yok (2026-11-10_yanlis_alarm_Y1-Y3_dex3-4.md). Denemek için dedektör adı sonuna +dogrula"}
   head:                {value: "models/verifier/head.npz", status: estimate, source: "tools.train_verifier çıktısı (repoya girmez)"}
   threshold:           {value: 0.30, status: estimate, source: "Bölge bu olasılığın altındaysa atılır. Kaçırmamak için düşük başlar; train_verifier tablosuna göre ayarlanacak"}
   margin:              {value: 0.25, status: estimate, source: "Kırpım, kutunun bu oranı kadar genişletilir (bağlam). Ölçülmedi"}
