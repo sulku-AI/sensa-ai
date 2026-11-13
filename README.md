@@ -19,6 +19,7 @@ Neden: ayna dokunuşu sinestezisi olan biri için kanlı bir görüntü fiziksel
 | [docs/TEST_PLANI.md](docs/TEST_PLANI.md) | Kan görmeden test: kim neye bakar, hipotezler H-01…H-06 |
 | [docs/BLURTRACK_FORMAT.md](docs/BLURTRACK_FORMAT.md) | Bulanıklaştırma izi dosya biçimi (platformlar için) |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Karar defteri |
+| [docs/ACIK_KAYNAK_YOL_HARITASI.md](docs/ACIK_KAYNAK_YOL_HARITASI.md) | Açık kaynak, Instagram ve destek programları yol haritası |
 | [docs/FAILED_APPROACHES.md](docs/FAILED_APPROACHES.md) | Bırakılan yollar (elle etiketli Faster R-CNN) |
 
 ## Kurallar
